@@ -4216,6 +4216,204 @@ body[data-page="leads"] .leads-lead {
   font-size: 13px;
 }
 
+/* Accounts setup survey */
+.accounts-survey {
+  margin-top: 8px;
+  padding: 24px 28px 20px;
+  max-width: 640px;
+}
+.survey-progress-wrap {
+  margin-bottom: 24px;
+}
+.survey-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.survey-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent-blue), #6366f1);
+  transition: width 0.35s ease;
+}
+.survey-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.survey-stage {
+  min-height: 220px;
+}
+.survey-step-enter {
+  animation: survey-fade-in 0.28s ease;
+}
+@keyframes survey-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.survey-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+}
+.survey-question {
+  font-size: clamp(1.35rem, 3vw, 1.65rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0 0 10px;
+  letter-spacing: -0.02em;
+}
+.survey-sub {
+  font-size: 15px;
+  color: var(--muted);
+  margin: 0 0 20px;
+  line-height: 1.55;
+}
+.survey-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.survey-choice-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 16px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: center;
+  border-radius: 12px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    box-shadow var(--dur-fast);
+}
+.survey-choice-btn:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow);
+}
+.survey-choice-btn.is-selected,
+.survey-choice-btn[aria-pressed="true"] {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-soft);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.survey-choice-btn.secondary {
+  background: transparent;
+  font-weight: 500;
+  color: var(--muted);
+}
+.survey-help-panel {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--border);
+}
+.survey-help-list {
+  margin: 0 0 12px;
+  padding-left: 1.2rem;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.survey-action-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.survey-action-link {
+  text-decoration: none;
+}
+.survey-payout-methods {
+  margin-top: 4px;
+}
+.survey-input-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.survey-payout-input {
+  width: 100%;
+  min-width: 0;
+}
+.survey-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.survey-nav .btn {
+  margin-left: auto;
+}
+.survey-nav #survey-back {
+  margin-left: 0;
+}
+.survey-done-card {
+  padding: 18px 20px;
+  background: var(--surface-2, #f8fafc);
+}
+.survey-done-row {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.survey-done-check {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.survey-done-payout {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+html[data-theme="dark"] .survey-help-panel,
+html[data-theme="dark"] .survey-done-card {
+  background: rgba(255, 255, 255, 0.04);
+}
+html[data-theme="dark"] .survey-choice-btn {
+  background: var(--surface);
+}
+html[data-theme="dark"] .survey-choice-btn.secondary {
+  background: transparent;
+}
+
 /* Legal pages — plain text only */
 .legal-plain {
   max-width: 42rem;

@@ -12,51 +12,22 @@
   <div id="page-body">
     <div id="step-header-slot"></div>
     <h1>Set up accounts</h1>
-    <p class="lead">Do these <strong>2 setups in order</strong> (~10 min). Check each one off on the <a href="checklist.html">setup checklist</a> as you go.</p>
+    <p class="lead">Answer a few quick questions (~10 min). One step at a time — check each off on the <a href="checklist.html">setup checklist</a> when you're done.</p>
 
-    <div class="setup-steps">
-      <article class="setup-step">
-        <div class="setup-step-head">
-          <span class="setup-num" aria-hidden="true">1</span>
-          <div>
-            <h3>Team Telegram</h3>
-            <p class="setup-step-desc">Where you post interested leads after a call.</p>
-          </div>
+    <div id="accounts-survey" class="accounts-survey card">
+      <div class="survey-progress-wrap" aria-hidden="true">
+        <div class="survey-progress-track">
+          <div class="survey-progress-bar" id="survey-progress-bar"></div>
         </div>
-        <ul class="setup-list">
-          <li>Download Telegram and create a <strong>free account</strong></li>
-          <li><a class="link-bold-blue" data-config="telegramTeam" href="#" target="_blank" rel="noopener">Join team Telegram group</a></li>
-        </ul>
-      </article>
+        <span class="survey-progress-text" id="survey-progress-text">Question 1 of 4</span>
+      </div>
 
-      <article class="setup-step setup-step-payout">
-        <div class="setup-step-head">
-          <span class="setup-num" aria-hidden="true">2</span>
-          <div>
-            <h3>Payout method</h3>
-            <p class="setup-step-desc">So you can get paid when a deal closes. Pick how you get paid, then paste your link.</p>
-          </div>
-        </div>
+      <div id="survey-stage" class="survey-stage" aria-live="polite"></div>
 
-        <div id="payout-setup" class="payout-setup card">
-          <p class="payout-setup-label">Choose your app</p>
-          <div id="payout-methods" class="payout-methods" role="group" aria-label="Payout app"></div>
-
-          <div id="payout-input-panel" class="payout-input-panel" hidden>
-            <label class="payout-field-label" id="payout-field-label" for="payout-link-input">Paste your payout link</label>
-            <p id="payout-input-hint" class="payout-input-hint muted"></p>
-            <div class="payout-input-row">
-              <input type="text" id="payout-link-input" class="payout-link-input" autocomplete="off" spellcheck="false" />
-              <button type="button" class="btn" id="payout-save-btn">Save</button>
-              <button type="button" class="btn secondary" id="payout-reset-btn">Reset</button>
-            </div>
-            <p id="payout-status" class="payout-status" hidden></p>
-          </div>
-
-          <div id="payout-saved-preview" class="payout-saved-preview" hidden></div>
-        </div>
-
-      </article>
+      <div class="survey-nav" id="survey-nav">
+        <button type="button" class="btn secondary" id="survey-back" hidden>Back</button>
+        <button type="button" class="btn" id="survey-next">Continue</button>
+      </div>
     </div>
 
     <div id="step-footer-slot"></div>
@@ -73,5 +44,6 @@
   <script src="js/layout-fix.js"></script>
   <script src="js/app.js"></script>
   <script src="js/payout-setup.js"></script>
+  <script src="js/accounts-survey.js"></script>
 </body>
 </html>
