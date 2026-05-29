@@ -14,6 +14,7 @@
     "lpc_nav_collapsed_v1",
     "lpc_template_builder_v1",
     "lpc_lead_finder_prefs_v1",
+    "lpc_user_prefs_v1",
   ];
 
   let client = null;

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings · Sales Team Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+</head>
+<body data-page="settings">
+  <div id="shell"></div>
+  <div id="page-body">
+    <p class="page-label" data-icon="settings">Help</p>
+    <h1>Settings</h1>
+    <p class="lead">Customize your appearance and account.</p>
+
+    <div class="settings-stack">
+      <section class="card settings-card" id="settings-profile">
+        <h2 class="settings-card-title" data-icon="user-plus">Profile</h2>
+        <p class="settings-hint muted">Signed in as <strong id="settings-rep-id">—</strong></p>
+
+        <label class="field">
+          <span class="field-label">Display name</span>
+          <input type="text" id="settings-display-name" maxlength="40" autocomplete="name" placeholder="Your name">
+        </label>
+        <p id="settings-profile-status" class="settings-status settings-status-inline" hidden></p>
+      </section>
+
+      <section class="card settings-card" id="settings-security">
+        <h2 class="settings-card-title" data-icon="shield">Security</h2>
+        <label class="field">
+          <span class="field-label">Current PIN</span>
+          <input type="password" id="settings-pin-current" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="field-label">New PIN</span>
+          <input type="password" id="settings-pin-new" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off" placeholder="4 digits">
+        </label>
+        <label class="field">
+          <span class="field-label">Confirm new PIN</span>
+          <input type="password" id="settings-pin-confirm" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocomplete="off">
+        </label>
+        <p id="settings-pin-status" class="settings-status" hidden></p>
+        <button type="button" class="btn" id="settings-save-pin">Change PIN</button>
+        <p class="settings-note muted" id="settings-pin-cloud-note" hidden>PIN changes require cloud sign-in (Supabase).</p>
+      </section>
+
+      <section class="card settings-card" id="settings-appearance">
+        <h2 class="settings-card-title" data-icon="sparkles">Appearance</h2>
+        <p class="field-label">Theme</p>
+        <div class="settings-segment" role="group" aria-label="Theme">
+          <button type="button" class="settings-segment-btn" data-theme-pick="light">Light</button>
+          <button type="button" class="settings-segment-btn" data-theme-pick="dark">Dark</button>
+          <button type="button" class="settings-segment-btn" data-theme-pick="system">System</button>
+        </div>
+
+        <label class="settings-check">
+          <input type="checkbox" id="settings-reduce-motion">
+          <span>Reduce motion</span>
+        </label>
+      </section>
+
+      <section class="card settings-card settings-card-danger">
+        <h2 class="settings-card-title" data-icon="log-out">Session</h2>
+        <p class="settings-hint muted">Sign out on this device. You will need your PIN again.</p>
+        <button type="button" class="btn btn-danger" id="settings-sign-out">Sign out</button>
+      </section>
+    </div>
+  </div>
+  <script src="js/config.js"></script>
+  <script src="js/config-merge.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/rep-session.js"></script>
+  <script src="js/rep-settings-sync.js"></script>
+  <script src="js/user-prefs.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/lock.js"></script>
+  <script src="js/layout-fix.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/settings.js"></script>
+</body>
+</html>

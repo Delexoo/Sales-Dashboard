@@ -47,6 +47,8 @@
       '<path d="M8 2v2M16 2v2M12 20v2M6 8H4a2 2 0 0 0-2 2v1a2 2 0 0 0 2 2h2M18 8h2a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 9h6M6 13a6 6 0 0 0 12 0"/>',
     "file-text":
       '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+    "log-out":
+      '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
   };
 
   const STEP_ICONS = {

@@ -3,6 +3,7 @@
   const LOCKOUT_KEY = "lpc_lockout_v1";
   const MAX_FAILED = 5;
   const LOCKOUT_MS = 30 * 60 * 1000;
+  const PIN_AUTO_SUBMIT_LEN = 4;
   let sessionWatchStarted = false;
 
   /** @type {{ id: string, name: string, pin: string }[] | null} */
@@ -11,6 +12,7 @@
   let lockoutTimer = null;
   let lockBuilt = false;
   let supabaseClient = null;
+  let pinVerifying = false;
 
   function isPublicPage() {
     return document.body?.dataset?.public === "1";
@@ -146,6 +148,7 @@
       wrap.appendChild(err);
     }
     err.textContent = msg;
+    if (window.SiteTheme?.isReduceMotion?.()) return;
     wrap.classList.add("site-lock-shake");
     setTimeout(() => wrap.classList.remove("site-lock-shake"), 420);
   }
@@ -264,6 +267,19 @@
       tryUnlock(input, inner, form);
     });
 
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/\D/g, "");
+      if (digits !== input.value) input.value = digits;
+      if (
+        digits.length === PIN_AUTO_SUBMIT_LEN &&
+        !isLockedOut() &&
+        !input.disabled &&
+        !pinVerifying
+      ) {
+        tryUnlock(input, inner, form);
+      }
+    });
+
     if (isLockedOut()) {
       startLockoutCountdown(inner, input, form);
     }
@@ -348,6 +364,7 @@
   }
 
   async function tryUnlock(input, wrap, form) {
+    if (pinVerifying) return;
     if (isLockedOut()) {
       startLockoutCountdown(wrap, input, form);
       return;
@@ -367,16 +384,21 @@
     }
 
     let rep = null;
-    if (useServerPinAuth()) {
-      try {
-        rep = await verifyPinWithSupabase(entered);
-      } catch (e) {
-        console.error(e);
-        showError(wrap, "Could not verify PIN. Check Supabase setup and try again.");
-        return;
+    pinVerifying = true;
+    try {
+      if (useServerPinAuth()) {
+        try {
+          rep = await verifyPinWithSupabase(entered);
+        } catch (e) {
+          console.error(e);
+          showError(wrap, "Could not verify PIN. Check Supabase setup and try again.");
+          return;
+        }
+      } else {
+        rep = findRepByPin(entered);
       }
-    } else {
-      rep = findRepByPin(entered);
+    } finally {
+      pinVerifying = false;
     }
 
     if (rep) {

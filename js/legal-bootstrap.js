@@ -50,7 +50,9 @@
     const shell = document.getElementById("shell");
     if (shell) shell.remove();
 
-    loadScript("js/legal-page.js");
+    loadScript("js/theme.js", function () {
+      loadScript("js/legal-page.js");
+    });
   }
 
   function initLoggedIn() {
@@ -70,6 +72,8 @@
         "js/icons.js",
         "js/rep-session.js",
         "js/rep-settings-sync.js",
+        "js/user-prefs.js",
+        "js/theme.js",
         "js/lock.js",
         "js/layout-fix.js",
         "js/app.js",

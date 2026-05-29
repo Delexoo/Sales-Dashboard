@@ -11,7 +11,7 @@
     course: ["setup", "accounts", "workflow"],
     tools: ["leads", "scripts", "template", "outreach", "checklist"],
     quick: [],
-    help: ["earnings", "feedback", "bug-bounty", "resources", "owner", "privacy", "terms"],
+    help: ["earnings", "feedback", "bug-bounty", "settings", "resources", "owner", "privacy", "terms"],
   };
 
   const COMMISSION_RATE = 0.4;
@@ -402,6 +402,7 @@
           `<li><a class="${activeId === "earnings" ? "nav-link active" : "nav-link"}" href="earnings.html"><span class="nav-link-text">${ico("wallet", "ico-nav")}How you get paid</span></a></li>` +
             `<li><a class="${activeId === "feedback" ? "nav-link active" : "nav-link"}" href="feedback.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Feedback</span></a></li>` +
             `<li><a class="${activeId === "bug-bounty" ? "nav-link active" : "nav-link"}" href="bug-bounty.html"><span class="nav-link-text">${ico("bug", "ico-nav")}Bug Bounty</span></a></li>` +
+            `<li><a class="${activeId === "settings" ? "nav-link active" : "nav-link"}" href="settings.html"><span class="nav-link-text">${ico("settings", "ico-nav")}Settings</span></a></li>` +
             `<li><a class="${resourcesActive ? "nav-link active" : "nav-link"}" href="resources.html"><span class="nav-link-text">${ico("external-link", "ico-nav")}All links</span></a></li>` +
             `<li><a class="${activeId === "owner" ? "nav-link active" : "nav-link"}" href="owner.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Meet the Owner</span></a></li>`
         ) +
@@ -1685,7 +1686,9 @@
     );
     buildEarningsChart(chart);
     chart.classList.add("is-animating");
-    if (opts && opts.intro) {
+    const motionReduced =
+      document.documentElement.getAttribute("data-reduce-motion") === "1";
+    if (opts && opts.intro && !motionReduced) {
       chart.querySelectorAll(".earnings-chart-bar").forEach((bar) => {
         bar.style.transform = "scaleY(0)";
       });
@@ -1734,9 +1737,11 @@
       if (wrap) wrap.title = "$" + formatMoney(r.total);
       if (amt) {
         amt.textContent = "$" + formatMoney(r.total);
-        amt.classList.remove("earnings-chart-amt-updated");
-        void amt.offsetWidth;
-        amt.classList.add("earnings-chart-amt-updated");
+        if (document.documentElement.getAttribute("data-reduce-motion") !== "1") {
+          amt.classList.remove("earnings-chart-amt-updated");
+          void amt.offsetWidth;
+          amt.classList.add("earnings-chart-amt-updated");
+        }
       }
       if (bar) {
         void bar.offsetHeight;
@@ -1914,6 +1919,13 @@
     }
   });
   window.addEventListener("rep-settings-ready", () => {
+    if (window.UserPrefs && window.SiteTheme) {
+      const prefs = window.UserPrefs.get();
+      window.SiteTheme.apply(prefs.theme || "system", {
+        persistDevice: true,
+        reduceMotion: !!prefs.reduceMotion,
+      });
+    }
     if (document.body.dataset.appBooted !== "1" || settingsUiSynced) return;
     settingsUiSynced = true;
     refreshAfterSettingsSync();
