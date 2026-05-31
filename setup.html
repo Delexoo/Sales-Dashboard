@@ -3,28 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 1 — Start here · Sales Team Dashboard</title>
+  <title>Get started · Sales Team Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/site.css">
 </head>
-<body data-page="setup" data-onboarding-step="1">
+<body data-page="setup">
   <div id="shell"></div>
   <div id="page-body">
     <div id="step-header-slot"></div>
-    <h1>Start here</h1>
-    <p class="lead">Watch the full course video first (~9–14 min). Then check it off on the <a href="checklist.html">setup checklist</a> and continue to Set up accounts.</p>
+    <h1>Get started</h1>
+    <p class="lead">Phase B: four quick steps to join Telegram and save how you get paid. Finish the business modules (Phase A) first if you haven't yet.</p>
 
-    <section class="card lesson-video" id="video">
-      <h2 class="section-head" data-icon="play-circle" style="margin-top:0;justify-content:flex-start">Course video</h2>
-      <p style="font-size:14px;color:var(--muted);margin-bottom:14px">Full walkthrough — about 9–14 minutes.</p>
-      <div class="video-wrap" id="video-embed"></div>
-    </section>
+    <div id="accounts-survey" class="accounts-survey card">
+      <header class="survey-progress-wrap">
+        <div class="survey-progress-top">
+          <p class="survey-progress-text" id="survey-progress-text">Loading…</p>
+          <div class="survey-progress-actions">
+            <button type="button" class="survey-back" id="survey-back" title="Previous step" aria-label="Previous step">Back</button>
+            <button type="button" class="survey-restart" id="survey-restart" title="Start over" aria-label="Restart survey">Restart</button>
+          </div>
+        </div>
+        <div class="survey-progress-track" aria-hidden="true">
+          <div class="survey-progress-bar" id="survey-progress-bar"></div>
+        </div>
+      </header>
+      <div id="survey-stage" class="survey-stage" aria-live="polite"></div>
+    </div>
 
     <div id="step-footer-slot"></div>
   </div>
   <script src="js/config.js"></script>
-  <script src="js/config-merge.js"></script>
+  <script src="js/image-preload.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/course-modules.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/rep-session.js"></script>
   <script src="js/rep-settings-sync.js"></script>
@@ -33,5 +44,7 @@
   <script src="js/lock.js"></script>
   <script src="js/layout-fix.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/payout-setup.js"></script>
+  <script src="js/accounts-survey.js"></script>
 </body>
 </html>

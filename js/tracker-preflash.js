@@ -5,6 +5,8 @@
   const TRACKER_KEY = "lpc_sales_tracker_v2";
   const SESSION_KEY = "lpc_rep_session_v1";
   const DEFAULT_GOAL = 2000;
+  const GOAL_RING_R = 42;
+  const GOAL_RING_C = 2 * Math.PI * GOAL_RING_R;
 
   function currentRepId() {
     try {
@@ -22,6 +24,14 @@
 
   function formatMoney(n) {
     return Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
+
+  function applyGoalRingProgress(pct) {
+    const ring = document.getElementById("goal-ring-progress");
+    if (!ring) return;
+    const p = Math.min(100, Math.max(0, pct));
+    ring.style.strokeDasharray = GOAL_RING_C + " " + GOAL_RING_C;
+    ring.style.strokeDashoffset = String(GOAL_RING_C * (1 - p / 100));
   }
 
   function loadSnapshot() {
@@ -60,8 +70,7 @@
     const closesEl = document.getElementById("tracker-closes");
     if (closesEl) closesEl.textContent = String(closes);
 
-    const bar = document.getElementById("goal-bar");
-    if (bar) bar.style.width = pct + "%";
+    applyGoalRingProgress(pct);
 
     const pctBadge = document.getElementById("goal-pct-badge");
     if (pctBadge) pctBadge.textContent = pctRound + "%";

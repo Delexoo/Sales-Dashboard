@@ -4,14 +4,14 @@
   const TRACKER_KEY_LEGACY = "lpc_sales_tracker_v1";
   const STEP_DONE_KEY = "lpc_sales_onboarding_steps_v1";
   const NAV_COLLAPSED_KEY = "lpc_nav_collapsed_v1";
-  const NAV_DEFAULT_COLLAPSED = ["quick"];
+  const SIDEBAR_COLLAPSED_KEY = "lpc_sidebar_collapsed_v1";
+  const NAV_DEFAULT_COLLAPSED = ["help"];
 
   const NAV_GROUP_PAGES = {
     overview: ["home"],
-    course: ["setup", "accounts", "workflow"],
+    course: ["course-module", "setup"],
     tools: ["leads", "scripts", "template", "outreach", "checklist"],
-    quick: [],
-    help: ["earnings", "feedback", "bug-bounty", "settings", "resources", "owner", "privacy", "terms"],
+    help: ["faq", "feedback", "bug-bounty", "settings", "resources", "owner", "privacy", "terms"],
   };
 
   const COMMISSION_RATE = 0.4;
@@ -30,13 +30,86 @@
     return n > 0 ? n : DEFAULT_GOAL;
   }
 
-  const COURSE_STEP_COUNT = 3;
+  const ONBOARDING_STEPS = [];
 
-  const ONBOARDING_STEPS = [
-    { id: "setup", href: "setup.html", num: 1, title: "Start here", desc: "Watch the course video", keys: ["video"] },
-    { id: "accounts", href: "accounts.html", num: 2, title: "Set up accounts", desc: "Telegram and payout", keys: ["telegram", "payout"] },
-    { id: "workflow", href: "workflow.html", num: 3, title: "Everyday Tasks", desc: "Your daily call loop", keys: ["workflow"] },
-  ];
+  function getCourseModules() {
+    return window.CourseModules?.list?.() || [];
+  }
+
+  function getActiveCourseModuleId() {
+    if (document.body.dataset.page !== "course-module") return "";
+    try {
+      return new URLSearchParams(window.location.search).get("m") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function renderCourseNav(activeId, progress) {
+    const modules = getCourseModules();
+    const activeModuleId = getActiveCourseModuleId();
+    if (!modules.length) {
+      return (
+        `<li><a class="nav-link${activeId === "setup" ? " active" : ""}" href="setup.html">` +
+        `<span class="step-badge">1</span><span class="nav-link-text">Get started</span></a></li>`
+      );
+    }
+
+    let html = "";
+
+    const viewingMod = activeModuleId ? window.CourseModules.get(activeModuleId) : null;
+    const viewingId = viewingMod?.id || activeModuleId;
+
+    modules.forEach((mod) => {
+      const done = window.CourseModules.isComplete(mod, progress);
+      const isCurrent =
+        activeId === mod.id ||
+        (activeId === "course-module" && viewingId === mod.id) ||
+        (activeId === "setup" && mod.id === "setup-accounts");
+      let cls = "nav-link";
+      if (isCurrent) cls += " active";
+      if (done) cls += " done";
+      const badge = done
+        ? `<span class="step-badge done-badge">${mod.num}</span>`
+        : `<span class="step-badge">${mod.num}</span>`;
+      html +=
+        `<li><a class="${cls}" href="${window.CourseModules.href(mod)}">` +
+        badge +
+        `<span class="nav-link-text">${mod.title}</span></a></li>`;
+    });
+
+    return html;
+  }
+
+  function refreshCourseNavInSidebar() {
+    const list = document.getElementById("nav-panel-course");
+    if (!list) return;
+    const page = document.body.dataset.page || "home";
+    list.innerHTML = renderCourseNav(page, loadProgress());
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebar-overlay");
+    const btn = document.getElementById("menu-btn");
+    if (!sidebar) return;
+    const close = () => {
+      sidebar.classList.remove("open");
+      overlay?.classList.remove("open");
+      syncMenuBtnState(btn, sidebar, overlay);
+    };
+    list.querySelectorAll(".nav-link").forEach((a) => a.addEventListener("click", close));
+  }
+
+  function pulseCourseModuleBadge(mod) {
+    if (!mod?.id) return;
+    const list = document.getElementById("nav-panel-course");
+    if (!list) return;
+    const needle = "m=" + encodeURIComponent(mod.id);
+    list.querySelectorAll(".nav-link").forEach((link) => {
+      const href = link.getAttribute("href") || "";
+      if (!href.includes(needle)) return;
+      const badge = link.querySelector(".step-badge.done-badge");
+      if (badge) badge.classList.add("step-badge--pop");
+    });
+  }
 
   const TOOL_PAGES = [
     { id: "leads", href: "leads.html", label: "Lead Finder" },
@@ -45,6 +118,27 @@
     { id: "outreach", href: "outreach.html", label: "Text & email" },
     { id: "checklist", href: "checklist.html", label: "Setup checklist" },
   ];
+
+  const DAILY_TOOL_PROGRESS = {
+    leads: "leads",
+    scripts: "script",
+    template: "template",
+    outreach: "outreach",
+    checklist: "checklist",
+  };
+
+  function isChecklistItemDone(id, progress) {
+    if (progress[id]) return true;
+    if (id === "template" && progress["first-lead"]) return true;
+    return false;
+  }
+
+  function touchDailyToolProgress() {
+    const page = document.body.dataset.page || "";
+    const key = DAILY_TOOL_PROGRESS[page];
+    if (!key) return;
+    touchProgressKeys([key]);
+  }
 
   function cfg() {
     return window.SITE_CONFIG || {};
@@ -70,6 +164,32 @@
       return JSON.parse(lsGet(PROGRESS_KEY) || "{}");
     } catch (e) {
       return {};
+    }
+  }
+
+  function applyPostLoginRedirect() {
+    const CM = window.CourseModules;
+    if (!CM?.loginLandingUrl) return;
+
+    const progress = loadProgress();
+    const landing = CM.loginLandingUrl(progress);
+    const page = (location.pathname.split("/").pop() || "").toLowerCase();
+
+    try {
+      const target = new URL(landing, location.href);
+      const here = new URL(location.href);
+      if (here.pathname === target.pathname && here.search === target.search) return;
+    } catch (e) {
+      if (location.href.includes(landing)) return;
+    }
+
+    if (CM.allComplete(progress)) {
+      if (page !== "dashboard.html") location.replace(landing);
+      return;
+    }
+
+    if (page === "index.html" || page === "course.html") {
+      location.replace(landing);
     }
   }
 
@@ -332,25 +452,65 @@
     });
   }
 
+  function isMobileNav() {
+    return window.matchMedia("(max-width: 900px)").matches;
+  }
+
+  function loadSidebarCollapsed() {
+    try {
+      const raw = lsGet(SIDEBAR_COLLAPSED_KEY);
+      return raw === "1" || raw === 1 || raw === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveSidebarCollapsed(collapsed) {
+    try {
+      lsSet(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function setDesktopSidebarCollapsed(collapsed) {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+  }
+
+  function syncMenuBtnState(btn, sidebar, overlay) {
+    if (!btn) return;
+    if (isMobileNav()) {
+      document.body.classList.remove("sidebar-collapsed");
+      const open = sidebar?.classList.contains("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      return;
+    }
+    sidebar?.classList.remove("open");
+    overlay?.classList.remove("open");
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    btn.setAttribute("aria-label", collapsed ? "Open menu" : "Close menu");
+  }
+
   function renderShell(activeId) {
     const c = cfg();
     const progress = loadProgress();
     const stepIcons = (window.SiteIcons && window.SiteIcons.STEP_ICONS) || {};
 
-    const onboardingNav = ONBOARDING_STEPS.map((s) => {
-      const done = isStepComplete(s, progress);
-      const isCurrent = s.id === activeId;
-      let cls = "nav-link";
-      if (isCurrent) cls += " active";
-      if (done) cls += " done";
-      const ic = stepIcons[s.id] || "book-open";
-      const badge = done
-        ? `<span class="step-badge done-badge">${ico("check", "ico-sm")}</span>`
-        : `<span class="step-badge">${s.num}</span>`;
-      return `<li><a class="${cls}" href="${s.href}">${badge}<span class="nav-link-text">${ico(ic, "ico-nav")}${s.title}</span></a></li>`;
-    }).join("");
+    const onboardingNav = renderCourseNav(activeId, progress);
 
     const toolsNav = TOOL_PAGES.map((p) => {
+      if (p.id === "checklist") {
+        const cls = p.id === activeId ? "nav-link active nav-link--checklist" : "nav-link nav-link--checklist";
+        const pct = checklistProgressPercent(progress);
+        return (
+          `<li><a class="${cls}" href="${p.href}">` +
+          `<span class="nav-link-text">${ico("badge-check", "ico-nav")}${p.label}</span>` +
+          `<span class="nav-link-progress" aria-hidden="true">` +
+          `<span class="nav-link-progress-bar" style="width:${pct}%"></span></span></a></li>`
+        );
+      }
       const cls = p.id === activeId ? "nav-link active" : "nav-link";
       const ic =
         p.id === "leads"
@@ -359,9 +519,7 @@
             ? "file-plus"
             : p.id === "scripts"
               ? "phone"
-              : p.id === "checklist"
-                ? "badge-check"
-                : "message-square";
+              : "message-square";
       return `<li><a class="${cls}" href="${p.href}"><span class="nav-link-text">${ico(ic, "ico-nav")}${p.label}</span></a></li>`;
     }).join("");
 
@@ -375,9 +533,9 @@
     const main = document.getElementById("main-content");
 
     const chrome = document.createRange().createContextualFragment(
-      `<button type="button" class="menu-btn" id="menu-btn" aria-label="Open menu">${ico("menu", "ico-menu")}<span>Menu</span></button>` +
-        `<div class="sidebar-overlay" id="sidebar-overlay"></div>` +
+      `<div class="sidebar-overlay" id="sidebar-overlay"></div>` +
         `<aside class="sidebar" id="sidebar">` +
+        `<div class="sidebar-panel">` +
         `<div class="brand">` +
         `<span class="brand-mark">${ico("sparkles", "ico-brand")}</span>` +
         `<span class="brand-text"><strong>${brandName}</strong><span class="brand-sub">${escHtml(brandSubText())}</span></span>` +
@@ -390,22 +548,17 @@
         navGroup("course", "Course", onboardingNav) +
         navGroup("tools", "Daily tools", toolsNav) +
         navGroup(
-          "quick",
-          "Quick links",
-          navQuickLink("send", "Interested Businesses", 'data-config="interestedBusinessesUrl" href="#" target="_blank" rel="noopener"', true) +
-            navQuickLink("message-square", "Team Telegram", 'data-config="telegramTeam" href="#" target="_blank" rel="noopener"', true) +
-            navQuickLink("banknote", "Website Agency", 'data-config="payoutTelegramUrl" href="#" target="_blank" rel="noopener"', true)
-        ) +
-        navGroup(
           "help",
           "Help",
-          `<li><a class="${activeId === "earnings" ? "nav-link active" : "nav-link"}" href="earnings.html"><span class="nav-link-text">${ico("wallet", "ico-nav")}How you get paid</span></a></li>` +
-            `<li><a class="${activeId === "feedback" ? "nav-link active" : "nav-link"}" href="feedback.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Feedback</span></a></li>` +
-            `<li><a class="${activeId === "bug-bounty" ? "nav-link active" : "nav-link"}" href="bug-bounty.html"><span class="nav-link-text">${ico("bug", "ico-nav")}Bug Bounty</span></a></li>` +
+          `<li><a class="${activeId === "owner" ? "nav-link active" : "nav-link"}" href="owner.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Meet the Owner</span></a></li>` +
             `<li><a class="${activeId === "settings" ? "nav-link active" : "nav-link"}" href="settings.html"><span class="nav-link-text">${ico("settings", "ico-nav")}Settings</span></a></li>` +
+            `<li><a class="${activeId === "faq" ? "nav-link active" : "nav-link"}" href="faq.html"><span class="nav-link-text">${ico("help-circle", "ico-nav")}FAQ</span></a></li>` +
             `<li><a class="${resourcesActive ? "nav-link active" : "nav-link"}" href="resources.html"><span class="nav-link-text">${ico("external-link", "ico-nav")}All links</span></a></li>` +
-            `<li><a class="${activeId === "owner" ? "nav-link active" : "nav-link"}" href="owner.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Meet the Owner</span></a></li>`
+            `<li><a class="${activeId === "feedback" ? "nav-link active" : "nav-link"}" href="feedback.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Feedback</span></a></li>` +
+            `<li><a class="${activeId === "bug-bounty" ? "nav-link active" : "nav-link"}" href="bug-bounty.html"><span class="nav-link-text">${ico("bug", "ico-nav")}Bug Bounty</span></a></li>`
         ) +
+        `</div>` +
+        `<button type="button" class="menu-btn" id="menu-btn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="true">${ico("menu", "ico-menu")}<span>Menu</span></button>` +
         `</aside>`
     );
     shell.insertBefore(chrome, main);
@@ -416,18 +569,43 @@
     const close = () => {
       sidebar.classList.remove("open");
       overlay.classList.remove("open");
-      btn.setAttribute("aria-expanded", "false");
-      btn.setAttribute("aria-label", "Open menu");
+      syncMenuBtnState(btn, sidebar, overlay);
     };
+    if (!isMobileNav() && loadSidebarCollapsed()) {
+      setDesktopSidebarCollapsed(true);
+    }
+    syncMenuBtnState(btn, sidebar, overlay);
     btn.addEventListener("click", () => {
-      const open = !sidebar.classList.contains("open");
-      sidebar.classList.toggle("open", open);
-      overlay.classList.toggle("open", open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-      btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      if (isMobileNav()) {
+        const open = !sidebar.classList.contains("open");
+        sidebar.classList.toggle("open", open);
+        overlay.classList.toggle("open", open);
+        syncMenuBtnState(btn, sidebar, overlay);
+        return;
+      }
+      const collapsed = !document.body.classList.contains("sidebar-collapsed");
+      setDesktopSidebarCollapsed(collapsed);
+      saveSidebarCollapsed(collapsed);
+      syncMenuBtnState(btn, sidebar, overlay);
     });
     overlay.addEventListener("click", close);
     sidebar.querySelectorAll(".nav-link").forEach((a) => a.addEventListener("click", close));
+    if (!window.__lpcSidebarResizeBound) {
+      window.__lpcSidebarResizeBound = true;
+      window.addEventListener("resize", () => {
+        const menuBtn = document.getElementById("menu-btn");
+        const side = document.getElementById("sidebar");
+        const over = document.getElementById("sidebar-overlay");
+        if (isMobileNav()) {
+          setDesktopSidebarCollapsed(false);
+        } else if (loadSidebarCollapsed()) {
+          setDesktopSidebarCollapsed(true);
+        } else {
+          setDesktopSidebarCollapsed(false);
+        }
+        syncMenuBtnState(menuBtn, side, over);
+      });
+    }
     initNavGroups(activeId);
     initConfigLinks();
     updateBrandSub();
@@ -439,66 +617,298 @@
     const root = document.getElementById("onboarding-path");
     if (!root) return;
     const progress = loadProgress();
-    const currentIdx = getCurrentStepIndex(progress);
+    const modules = getCourseModules();
+    if (!modules.length || !window.CourseModules) return;
 
-    root.innerHTML = ONBOARDING_STEPS.map((s, i) => {
-      const done = isStepComplete(s, progress);
-      const current = i === currentIdx;
-      let status = "Not started";
-      if (done) status = "Done";
-      else if (current) status = "Start here";
-      const cls = ["path-item", done ? "done" : "", current ? "current" : ""].filter(Boolean).join(" ");
-      return `<li class="${cls}"><a href="${s.href}" class="no-underline"><span class="path-num">${done ? "✓" : s.num}</span><div class="path-body"><div class="path-title">${s.title}</div><div class="path-desc">${s.desc}</div></div><span class="path-status">${status}</span></a></li>`;
+    const next = window.CourseModules.firstIncomplete(progress);
+
+    root.innerHTML = modules
+      .map((mod) => {
+        const done = window.CourseModules.isComplete(mod, progress);
+        const isNext = next && next.id === mod.id;
+        let status = "Not started";
+        if (done) status = "Done";
+        else if (isNext) status = "Up next";
+        const cls = ["path-item", done ? "done" : "", isNext ? "current" : ""].filter(Boolean).join(" ");
+        return (
+          `<li class="${cls}"><a href="${window.CourseModules.href(mod)}" class="no-underline">` +
+          `<span class="path-num">${done ? "✓" : mod.num}</span>` +
+          `<div class="path-body"><div class="path-title">${mod.title}</div></div>` +
+          `<span class="path-status">${status}</span></a></li>`
+        );
+      })
+      .join("");
+  }
+
+  const EVERYDAY_TASKS = [
+    {
+      step: 1,
+      task: "Open Lead Finder",
+      detail:
+        "Our leads list — businesses that already do not have a website. Use the No website filter if you want the best fits.",
+      resource: { href: "leads.html", label: "Lead Finder" },
+    },
+    {
+      step: 2,
+      task: "Pick a business",
+      detail: "Choose one business from the list and open its card when you are ready to work that lead.",
+    },
+    {
+      step: 3,
+      task: "Call & pitch the website",
+      detail:
+        "Dial from the card and use Call scripts to offer the free demo site. Talk to the owner or decision-maker. Not interested? Thank them and go back to step 2 — do not post the lead.",
+      resource: { href: "scripts.html", label: "Call scripts" },
+    },
+    {
+      step: 4,
+      task: "If they're interested, fill out the Lead Builder",
+      detailBullets: [
+        "Open Lead Builder — price must match what you quoted on the call",
+        "Price tier: $700, $1,000, or $1,500",
+        "Google Maps link: already in our leads list",
+        "Preference: Direct Link or Booking",
+        "Phone: +1 US number",
+        "Owner name",
+        "Click Copy template when the message is complete",
+        "Then: paste the full Lead Builder message into Interested Businesses on Telegram right away.",
+      ],
+      resource: { href: "template.html", label: "Lead Builder" },
+    },
+    {
+      step: 5,
+      task: "Send the template to us",
+      detail:
+        "Paste the full Lead Builder message into Interested Businesses on Telegram right away.",
+      resource: { hrefKey: "interestedBusinessesUrl", label: "Interested Businesses", external: true },
+    },
+    {
+      step: 6,
+      task: "Mark the business as complete",
+      detail:
+        "In Lead Finder, tag the business Complete (team sees it). Use Pending if you need to call back. Quick Save and Pin are only for you. Then start again at step 2.",
+      completeTag: true,
+    },
+  ];
+
+  function everydayTaskCompleteTag() {
+    return (
+      '<span class="everyday-tasks-complete-tag" title="In Lead Finder, tag this business Complete">' +
+      ico("check", "everyday-tasks-complete-tag-ico") +
+      '<span class="everyday-tasks-complete-tag-text">Complete</span></span>'
+    );
+  }
+
+  function everydayTaskToolCell(row) {
+    if (row.completeTag) return everydayTaskCompleteTag();
+    return everydayTaskOpenButton(row.resource);
+  }
+
+  function everydayTaskOpenButton(resource) {
+    if (!resource) return "";
+    const label = escHtml(resource.label || "Open");
+    if (resource.href) {
+      return `<a class="btn secondary everyday-tasks-open-btn" href="${escHtml(resource.href)}">${label}</a>`;
+    }
+    if (resource.hrefKey) {
+      const attrs = resource.external
+        ? ` data-config="${escHtml(resource.hrefKey)}" href="#" target="_blank" rel="noopener"`
+        : ` data-config="${escHtml(resource.hrefKey)}" href="#"`;
+      return `<a class="btn secondary everyday-tasks-open-btn"${attrs}>${label}</a>`;
+    }
+    return "";
+  }
+
+  function everydayTaskHasTip(row) {
+    return !!(row.detail || (Array.isArray(row.detailBullets) && row.detailBullets.length));
+  }
+
+  function everydayTaskTooltipHtml(row) {
+    if (Array.isArray(row.detailBullets) && row.detailBullets.length) {
+      return (
+        `<ul class="everyday-tasks-tooltip-list">` +
+        row.detailBullets.map((item) => `<li>${escHtml(item)}</li>`).join("") +
+        `</ul>`
+      );
+    }
+    return row.detail ? escHtml(row.detail) : "";
+  }
+
+  function renderEverydayTasksInto(tbody) {
+    if (!tbody) return;
+    tbody.innerHTML = EVERYDAY_TASKS.map((row) => {
+      const tipId = `everyday-tip-${row.step}`;
+      const whatCell = everydayTaskHasTip(row)
+        ? `<span class="everyday-tasks-tip" tabindex="0" aria-describedby="${tipId}"><strong class="everyday-tasks-task">${escHtml(row.task)}</strong></span>` +
+          `<span class="everyday-tasks-tooltip" role="tooltip" id="${tipId}">${everydayTaskTooltipHtml(row)}</span>`
+        : `<strong class="everyday-tasks-task">${escHtml(row.task)}</strong>`;
+      return (
+        `<tr class="everyday-tasks-row">` +
+        `<td class="everyday-tasks-step"><span class="everyday-tasks-step-num">${row.step}</span></td>` +
+        `<td class="everyday-tasks-what">${whatCell}</td>` +
+        `<td class="everyday-tasks-open">${everydayTaskToolCell(row)}</td>` +
+        `</tr>`
+      );
     }).join("");
+    initConfigLinks();
+    bindEverydayTaskTooltips(tbody);
+  }
+
+  function initEverydayTasks() {
+    renderEverydayTasksInto(document.getElementById("everyday-tasks-body"));
+  }
+
+  window.EverydayTasks = { renderInto: renderEverydayTasksInto };
+
+  function bindEverydayTaskTooltips(tbody) {
+    if (!tbody || tbody.dataset.tipsBound === "1") return;
+    tbody.dataset.tipsBound = "1";
+
+    let openTipTrigger = null;
+
+    function placeTooltip(tip, anchor) {
+      const margin = 12;
+      const gap = 8;
+      const ar = anchor.getBoundingClientRect();
+      tip.classList.add("is-placed");
+      tip.style.position = "fixed";
+      tip.style.zIndex = "10000";
+      tip.style.maxWidth = Math.min(340, window.innerWidth - margin * 2) + "px";
+      tip.style.left = ar.left + "px";
+      tip.style.top = ar.bottom + gap + "px";
+
+      tip.classList.add("is-measuring");
+      const tr = tip.getBoundingClientRect();
+      let left = ar.left;
+      if (tr.right > window.innerWidth - margin) {
+        left = Math.max(margin, window.innerWidth - margin - tr.width);
+        tip.style.left = left + "px";
+      }
+      if (tr.bottom > window.innerHeight - margin) {
+        tip.style.top = Math.max(margin, ar.top - tr.height - gap) + "px";
+      }
+      tip.classList.remove("is-measuring");
+    }
+
+    function getTipForTrigger(trigger) {
+      const tip = trigger.nextElementSibling;
+      return tip?.classList?.contains("everyday-tasks-tooltip") ? tip : null;
+    }
+
+    function showTip(trigger) {
+      const tip = getTipForTrigger(trigger);
+      if (!tip) return;
+      if (openTipTrigger && openTipTrigger !== trigger) hideTip(openTipTrigger);
+      placeTooltip(tip, trigger);
+      trigger.classList.add("is-tip-open");
+      openTipTrigger = trigger;
+    }
+
+    function hideTip(trigger) {
+      const tip = getTipForTrigger(trigger);
+      trigger.classList.remove("is-tip-open");
+      if (!tip) return;
+      tip.classList.remove("is-placed", "is-measuring");
+      tip.style.position = "";
+      tip.style.left = "";
+      tip.style.top = "";
+      tip.style.zIndex = "";
+      tip.style.maxWidth = "";
+      if (openTipTrigger === trigger) openTipTrigger = null;
+    }
+
+    tbody.querySelectorAll(".everyday-tasks-tip").forEach((trigger) => {
+      trigger.addEventListener("mouseenter", () => showTip(trigger));
+      trigger.addEventListener("mouseleave", () => hideTip(trigger));
+      trigger.addEventListener("focus", () => showTip(trigger));
+      trigger.addEventListener("blur", () => hideTip(trigger));
+    });
+
+    const repositionOpenTips = () => {
+      tbody.querySelectorAll(".everyday-tasks-tip.is-tip-open").forEach((trigger) => {
+        const tip = getTipForTrigger(trigger);
+        if (tip) placeTooltip(tip, trigger);
+      });
+    };
+    window.addEventListener("scroll", repositionOpenTips, true);
+    window.addEventListener("resize", repositionOpenTips);
   }
 
   const CHECKLIST_GROUPS = [
     {
-      title: "Step 1 — Watch the course",
-      guide: { href: "setup.html", label: "Start here" },
-      items: [{ id: "video", label: "Watched the full course video", hint: "About 9–14 minutes" }],
-    },
-    {
-      title: "Step 2 — Set up accounts",
-      guide: { href: "accounts.html", label: "Setup guide" },
+      title: "Course modules",
+      guide: { href: "course-module.html?m=introduction", label: "Start course" },
       items: [
         {
-          id: "telegram",
-          label: "Joined the team Telegram group",
-          link: { hrefKey: "telegramTeam", label: "Join group" },
+          id: "module_introduction",
+          label: "Start Here",
+          link: { href: "course-module.html?m=introduction", label: "Open module" },
         },
         {
-          id: "payout",
-          label: "Saved your payout method in Set up accounts",
-          hint: "Pick your app and save your link",
-          link: { href: "accounts.html", label: "Set up accounts" },
+          id: "module_business",
+          label: "The Business",
+          link: { href: "course-module.html?m=business", label: "Open module" },
+        },
+        {
+          id: "module_setup_accounts",
+          label: "Setup Accounts",
+          link: { href: "course-module.html?m=setup-accounts", label: "Open module" },
+        },
+        {
+          id: "module_dashboard",
+          label: "Platform Tour",
+          link: { href: "course-module.html?m=dashboard", label: "Open module" },
+        },
+        {
+          id: "module_everyday_tasks",
+          label: "Everyday Tasks",
+          link: { href: "course-module.html?m=everyday-tasks", label: "Open module" },
         },
       ],
     },
     {
-      title: "Step 3 — Learn your daily workflow",
-      guide: { href: "workflow.html", label: "Everyday Tasks" },
+      title: "Get started",
+      guide: { href: "setup.html", label: "Setup guide" },
       items: [
         {
-          id: "workflow",
-          label: "Reviewed Everyday Tasks",
-          link: { href: "workflow.html", label: "Everyday Tasks" },
+          id: "telegram",
+          label: "Joined ",
+          link: { hrefKey: "telegramTeam", label: "Website Agency" },
         },
         {
-          id: "earnings",
-          label: "Read how you get paid",
-          link: { href: "earnings.html", label: "Commission guide" },
+          id: "payout",
+          label: "Saved your payout method",
+          hint: "Pick your app and save your link",
+          link: { href: "course-module.html?m=setup-accounts", label: "Open setup" },
         },
       ],
     },
     {
       title: "Before your first call",
-      items: [
-        { id: "script", label: "Opened a call script", link: { href: "scripts.html", label: "Call scripts" } },
-        { id: "first-lead", label: "Tried the Lead Builder once", link: { href: "template.html", label: "Lead Builder" } },
-      ],
+      items: TOOL_PAGES.map((p) => ({
+        id: DAILY_TOOL_PROGRESS[p.id] || p.id,
+        label: "Opened " + p.label,
+        link: { href: p.href, label: p.label },
+      })),
     },
   ];
+
+  function getChecklistItems() {
+    return CHECKLIST_GROUPS.flatMap((g) => g.items);
+  }
+
+  function checklistProgressPercent(progress) {
+    const items = getChecklistItems();
+    if (!items.length) return 0;
+    const done = items.filter((it) => isChecklistItemDone(it.id, progress)).length;
+    return (done / items.length) * 100;
+  }
+
+  function updateChecklistNavProgress() {
+    const bar = document.querySelector(".nav-link--checklist .nav-link-progress-bar");
+    if (!bar) return;
+    bar.style.width = checklistProgressPercent(loadProgress()) + "%";
+  }
 
   function checklistItemLink(link) {
     if (!link) return "";
@@ -514,6 +924,46 @@
     return "";
   }
 
+  function markCourseModuleChecklist(mod) {
+    if (!mod || !window.CourseModules?.markComplete) return Promise.resolve();
+    const progress = loadProgress();
+    const next = window.CourseModules.markComplete(mod, progress);
+    saveProgress(next);
+    pulseCourseModuleBadge(mod);
+    window.dispatchEvent(new CustomEvent("onboarding-progress-changed"));
+    if (window.RepStorage?.flushSync) {
+      return window.RepStorage.flushSync().catch((e) => {
+        console.warn("Course progress sync failed", e);
+      });
+    }
+    if (window.RepStorage?.push) {
+      return window.RepStorage.push().catch((e) => {
+        console.warn("Course progress sync failed", e);
+      });
+    }
+    return Promise.resolve();
+  }
+
+  function touchProgressKeys(keys) {
+    if (!keys?.length) return;
+    const progress = loadProgress();
+    let changed = false;
+    keys.forEach((k) => {
+      if (k && !progress[k]) {
+        progress[k] = true;
+        changed = true;
+      }
+    });
+    if (!changed) return;
+    saveProgress(progress);
+    window.dispatchEvent(new CustomEvent("onboarding-progress-changed"));
+  }
+
+  window.LpcOnboarding = {
+    markCourseModuleComplete: markCourseModuleChecklist,
+    touchProgressKeys,
+  };
+
   function initOnboardingChecklist() {
     const root = document.getElementById("onboarding-checklist");
     if (!root) return;
@@ -523,7 +973,7 @@
     function render() {
       const bar = document.getElementById("checklist-bar");
       const label = document.getElementById("checklist-label");
-      const done = allItems.filter((it) => progress[it.id]).length;
+      const done = allItems.filter((it) => isChecklistItemDone(it.id, progress)).length;
       if (bar) bar.style.width = allItems.length ? (done / allItems.length) * 100 + "%" : "0%";
       if (label) label.textContent = done + " of " + allItems.length + " complete";
 
@@ -536,9 +986,9 @@
             const hint = it.hint ? `<span class="checklist-hint">${it.hint}</span>` : "";
             return (
               `<li data-progress-id="${it.id}">` +
-              `<input type="checkbox" id="c-${it.id}" ${progress[it.id] ? "checked" : ""}>` +
+              `<input type="checkbox" id="c-${it.id}" ${isChecklistItemDone(it.id, progress) ? "checked" : ""}>` +
               `<label for="c-${it.id}">` +
-              `<span class="checklist-item-label">${it.label}${checklistItemLink(it.link)}</span>${hint}` +
+              `<span class="checklist-item-label">${it.label}${checklistItemLink(it.link)}${it.linkSuffix || ""}</span>${hint}` +
               `</label></li>`
             );
           })
@@ -557,6 +1007,7 @@
             const id = cb.id.replace("c-", "");
             progress[id] = cb.checked;
             saveProgress(progress);
+            window.dispatchEvent(new CustomEvent("onboarding-progress-changed"));
             render();
           });
         });
@@ -595,6 +1046,16 @@
 
     let data = loadTracker();
 
+    const GOAL_RING_C = 2 * Math.PI * 42;
+
+    function applyGoalRingProgress(pct) {
+      const ring = document.getElementById("goal-ring-progress");
+      if (!ring) return;
+      const p = Math.min(100, Math.max(0, pct));
+      ring.style.strokeDasharray = GOAL_RING_C + " " + GOAL_RING_C;
+      ring.style.strokeDashoffset = String(GOAL_RING_C * (1 - p / 100));
+    }
+
     function renderStats() {
       const deals = data.deals || [];
       const earned = calcEarnedFromDeals(deals);
@@ -606,12 +1067,11 @@
       if (earnedEl) earnedEl.textContent = "$" + formatMoney(earned);
       const closesEl = document.getElementById("tracker-closes");
       if (closesEl) closesEl.textContent = String(closes);
-      const bar = document.getElementById("goal-bar");
       const gl = document.getElementById("goal-pct-label");
       const rem = document.getElementById("tracker-remaining");
       const pctBadge = document.getElementById("goal-pct-badge");
       const pctRound = Math.round(pct);
-      if (bar) bar.style.width = pct + "%";
+      applyGoalRingProgress(pct);
       if (pctBadge) pctBadge.textContent = pctRound + "%";
       if (gl) {
         gl.textContent = "$" + formatMoney(earned) + " of $" + formatMoney(goal);
@@ -687,7 +1147,10 @@
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
 
-      if (countLabel) countLabel.textContent = deals.length + " saved";
+      if (countLabel) {
+        countLabel.textContent =
+          deals.length === 1 ? "1 sale" : deals.length + " sales";
+      }
       if (empty) empty.hidden = deals.length > 0;
 
       if (!deals.length) {
@@ -719,7 +1182,7 @@
             "</div>" +
             '<button type="button" class="deal-delete btn secondary" data-delete-deal="' +
             escHtml(d.id) +
-            '" aria-label="Delete close">Delete</button>' +
+            '" aria-label="Delete sale">Delete</button>' +
             "</li>"
           );
         })
@@ -728,7 +1191,6 @@
       list.querySelectorAll("[data-delete-deal]").forEach((btn) => {
         btn.addEventListener("click", () => {
           const id = btn.getAttribute("data-delete-deal");
-          if (!confirm("Delete this close from your log?")) return;
           data.deals = data.deals.filter((d) => d.id !== id);
           saveTracker(data);
           renderStats();
@@ -809,40 +1271,33 @@
   }
 
   function renderStepFooter() {
-    const stepNum = parseInt(document.body.dataset.onboardingStep, 10);
-    if (!stepNum) return;
+    if (document.body.dataset.page !== "setup") return;
     const slot = document.getElementById("step-footer-slot");
     if (!slot) return;
-    const prev = ONBOARDING_STEPS[stepNum - 2];
-    const next = ONBOARDING_STEPS[stepNum];
-    const cur = ONBOARDING_STEPS[stepNum - 1];
+    const prev = window.CourseModules?.prevModule?.("setup");
+    const next = window.CourseModules?.nextModule?.("setup");
 
-    let html = '<div class="step-footer">';
-    if (prev) html += `<a href="${prev.href}" class="no-underline">← ${prev.title}</a>`;
-    else html += `<a href="dashboard.html" class="no-underline">← Dashboard</a>`;
-    if (next) html += `<a href="${next.href}" class="next no-underline">Next: ${next.title} →</a>`;
-    else html += `<a href="dashboard.html" class="next no-underline">Finish — back to Dashboard →</a>`;
+    let html = '<div class="step-footer step-footer-next-only">';
+    if (next && window.CourseModules) {
+      html += `<a href="${window.CourseModules.href(next)}" class="btn next no-underline">Next</a>`;
+    } else {
+      html += `<a href="dashboard.html" class="btn next no-underline">Next</a>`;
+    }
     html += "</div>";
-
     slot.innerHTML = html;
 
     const header = document.getElementById("step-header-slot");
     if (header) {
+      const prevLink =
+        prev && window.CourseModules
+          ? `<a href="${window.CourseModules.href(prev)}" class="no-underline" style="font-size:13px;color:var(--muted);margin-left:auto">← ${prev.title}</a>`
+          : `<a href="course-module.html?m=business" class="no-underline" style="font-size:13px;color:var(--muted);margin-left:auto">← Course</a>`;
       header.innerHTML = `
         <div class="step-header">
-          <span class="step-pill">Course · Step ${stepNum} of ${COURSE_STEP_COUNT}</span>
-          <a href="dashboard.html" class="no-underline" style="font-size:13px;color:var(--muted);margin-left:auto">Dashboard</a>
+          <span class="step-pill">Course · Get started</span>
+          ${prevLink}
         </div>
       `;
-    }
-
-    const nextLink = slot.querySelector(".step-footer a.next");
-    if (nextLink && cur?.keys?.length) {
-      nextLink.addEventListener("click", () => {
-        const progress = loadProgress();
-        cur.keys.forEach((key) => (progress[key] = true));
-        saveProgress(progress);
-      });
     }
   }
 
@@ -1463,6 +1918,7 @@
   }
 
   function copyTpl(btn) {
+    closeTplInfoPanels();
     const pref = tplMode === "dl" ? "Direct Link" : "Booking";
     const text =
       "Price: " +
@@ -1484,9 +1940,6 @@
           btn.textContent = "Copy template";
         });
       }, 2000);
-      const p = loadProgress();
-      p["first-lead"] = true;
-      saveProgress(p);
       persistTemplateBuilder();
     };
     if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(ok);
@@ -1502,6 +1955,7 @@
   }
 
   function clearTpl() {
+    closeTplInfoPanels();
     ["tpl-name", "tpl-phone", "tpl-maps"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.value = "";
@@ -1527,9 +1981,33 @@
     });
   }
 
+  function bindTemplateBuilderActions() {
+    const copyBtn = document.getElementById("tpl-copy-btn");
+    const clearBtn = document.getElementById("tpl-clear-btn");
+    if (copyBtn && !copyBtn.dataset.bound) {
+      copyBtn.dataset.bound = "1";
+      copyBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        copyTpl(copyBtn);
+      });
+    }
+    if (clearBtn && !clearBtn.dataset.bound) {
+      clearBtn.dataset.bound = "1";
+      clearBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearTpl();
+      });
+    }
+  }
+
   function initTplInfo() {
     const box = document.getElementById("tpl-builder");
-    if (!box) return;
+    if (!box || box.dataset.tplInfoInit === "1") return;
+    box.dataset.tplInfoInit = "1";
+
+    bindTemplateBuilderActions();
 
     box.querySelectorAll(".tpl-info-tooltip").forEach((tip) => {
       tip.addEventListener("click", (e) => e.stopPropagation());
@@ -1537,6 +2015,7 @@
 
     box.querySelectorAll("[data-tpl-info-toggle]").forEach((btn) => {
       btn.addEventListener("click", (e) => {
+        e.preventDefault();
         e.stopPropagation();
         const panelId = btn.getAttribute("aria-controls");
         const panel = panelId ? document.getElementById(panelId) : null;
@@ -1551,7 +2030,12 @@
       });
     });
 
-    document.addEventListener("click", closeTplInfoPanels);
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-tpl-info-toggle]") || e.target.closest(".tpl-info-tooltip")) {
+        return;
+      }
+      closeTplInfoPanels();
+    });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeTplInfoPanels();
     });
@@ -1592,18 +2076,66 @@
     }
   }
 
+  function buildLeadPickFromLead(lead) {
+    if (window.LeadDisplay?.buildLeadBuilderPick) {
+      return window.LeadDisplay.buildLeadBuilderPick(lead);
+    }
+    return {
+      phone: lead?.phone || "",
+      mapsUrl: lead?.mapsUrl || "",
+      price: "$500",
+    };
+  }
+
+  function applyLeadPick(pick) {
+    if (!pick || !document.getElementById("tpl-builder")) return;
+    if (pick.price) setTplPrice(pick.price, true);
+    const mapsVal = pick.mapsUrl || pick.maps || "";
+    const phoneEl = document.getElementById("tpl-phone");
+    const mapsEl = document.getElementById("tpl-maps");
+    if (phoneEl && pick.phone) phoneEl.value = pick.phone;
+    if (mapsEl && mapsVal) mapsEl.value = mapsVal;
+    persistTemplateBuilder();
+  }
+
+  function mergeLeadPickIntoStorage(pick) {
+    const s = loadTemplateBuilder();
+    const mapsVal = pick.mapsUrl || pick.maps || "";
+    saveTemplateBuilder({
+      mode: s.mode || tplMode || "dl",
+      price: pick.price || s.price || "$500",
+      name: s.name || "",
+      phone: pick.phone || "",
+      maps: mapsVal || s.maps || "",
+    });
+  }
+
+  function forwardLeadToBuilder(lead) {
+    const pick = buildLeadPickFromLead(lead);
+    try {
+      sessionStorage.setItem("lpc_lead_pick_v1", JSON.stringify(pick));
+    } catch (e) {}
+    if (document.getElementById("tpl-builder")) {
+      applyLeadPick(pick);
+      try {
+        sessionStorage.removeItem("lpc_lead_pick_v1");
+      } catch (e) {}
+      return;
+    }
+    mergeLeadPickIntoStorage(pick);
+    window.location.href = "template.html";
+  }
+
   function initLeadPickFromFinder() {
     try {
       const raw = sessionStorage.getItem("lpc_lead_pick_v1");
       if (!raw) return;
       sessionStorage.removeItem("lpc_lead_pick_v1");
-      const pick = JSON.parse(raw);
-      if (pick.mapsUrl) document.getElementById("tpl-maps").value = pick.mapsUrl;
-      if (pick.phone) document.getElementById("tpl-phone").value = pick.phone;
-      if (pick.name) document.getElementById("tpl-name").value = pick.name;
-      persistTemplateBuilder();
+      applyLeadPick(JSON.parse(raw));
     } catch (e) {}
   }
+
+  window.forwardLeadToBuilder = forwardLeadToBuilder;
 
   function initConfigLinks() {
     document.querySelectorAll("[data-config]").forEach((el) => {
@@ -1616,7 +2148,15 @@
         if (row) row.hidden = true;
         return;
       }
-      if (el.hasAttribute("data-config-text")) {
+      if (el.hasAttribute("data-config-paragraphs")) {
+        const parts = String(val)
+          .split(/\n\n+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (parts.length) {
+          el.innerHTML = parts.map((p) => "<p>" + escHtml(p) + "</p>").join("");
+        }
+      } else if (el.hasAttribute("data-config-text")) {
         let text = val;
         if (el.hasAttribute("data-config-short")) {
           text = String(val).replace(/^https?:\/\//i, "").replace(/^www\./i, "");
@@ -1699,8 +2239,7 @@
     );
     buildEarningsChart(chart);
     chart.classList.add("is-animating");
-    const motionReduced =
-      document.documentElement.getAttribute("data-reduce-motion") === "1";
+    const motionReduced = window.SiteTheme?.isReduceMotion?.() || false;
     if (opts && opts.intro && !motionReduced) {
       chart.querySelectorAll(".earnings-chart-bar").forEach((bar) => {
         bar.style.transform = "scaleY(0)";
@@ -1750,7 +2289,7 @@
       if (wrap) wrap.title = "$" + formatMoney(r.total);
       if (amt) {
         amt.textContent = "$" + formatMoney(r.total);
-        if (document.documentElement.getAttribute("data-reduce-motion") !== "1") {
+        if (!window.SiteTheme?.isReduceMotion?.()) {
           amt.classList.remove("earnings-chart-amt-updated");
           void amt.offsetWidth;
           amt.classList.add("earnings-chart-amt-updated");
@@ -1804,6 +2343,15 @@
     });
 
     selectTier(activeSale, { intro: true });
+
+    if (location.hash === "#how-you-get-paid") {
+      const target = document.getElementById("how-you-get-paid");
+      if (target) {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    }
   }
 
   function initOwnerPage() {
@@ -1846,7 +2394,9 @@
     }
     document.body.dataset.appBooted = "1";
     mountPage();
+    touchDailyToolProgress();
 
+    initEverydayTasks();
     initOnboardingChecklist();
     renderOnboardingPath();
     initSalesTracker();
@@ -1858,6 +2408,7 @@
     initConfigLinks();
     initEarningsProjection();
     initOwnerPage();
+    window.SiteImagePreload?.warmDocumentImages?.(document.body);
     if (window.SiteIcons) window.SiteIcons.initIcons();
 
     if (document.getElementById("tpl-builder")) {
@@ -1874,6 +2425,8 @@
       page === "home" ||
       !!document.getElementById("deals-list") ||
       !!document.getElementById("onboarding-path") ||
+      !!document.getElementById("course-module-list") ||
+      !!document.getElementById("course-module-root") ||
       !!document.getElementById("call-scripts-root")
     );
   }
@@ -1921,6 +2474,11 @@
   window.addEventListener("site-unlocked", () => {
     ensureSignOutFloatScript();
     if (!appLaunchStarted) startWhenReady();
+    if (window.RepStorage?.whenReady) {
+      window.RepStorage.whenReady(applyPostLoginRedirect);
+    } else {
+      applyPostLoginRedirect();
+    }
   });
 
   window.addEventListener("rep-session-changed", () => {
@@ -1934,14 +2492,19 @@
   window.addEventListener("rep-settings-ready", () => {
     if (window.UserPrefs && window.SiteTheme) {
       const prefs = window.UserPrefs.get();
-      window.SiteTheme.apply(prefs.theme || "light", {
-        persistDevice: true,
-        reduceMotion: !!prefs.reduceMotion,
-      });
+      window.SiteTheme.apply(prefs.theme || "light", { persistDevice: true });
     }
     if (document.body.dataset.appBooted !== "1" || settingsUiSynced) return;
     settingsUiSynced = true;
     refreshAfterSettingsSync();
+  });
+
+  window.addEventListener("onboarding-progress-changed", () => {
+    if (document.body.dataset.appBooted !== "1") return;
+    renderOnboardingPath();
+    initOnboardingChecklist();
+    refreshCourseNavInSidebar();
+    updateChecklistNavProgress();
   });
 
 })();

@@ -346,6 +346,7 @@
       }
     }
     window.RepSession?.enforceTrackerIdentity?.();
+    window.RepSession?.touchSessionMeta?.();
 
     applyUnlockedUi();
 

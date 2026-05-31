@@ -146,36 +146,83 @@
 
 
 
-  function initAppearance(prefs) {
+  function bindPrefCheckbox(id, key, prefs) {
+    const el = $(id);
+    if (!el) return;
+    if (key === "showSignOutFloat" || key === "showNavHints" || key === "showCourseFullscreenHint") {
+      el.checked = prefs[key] !== false;
+    } else {
+      el.checked = !!prefs[key];
+    }
+    if (el.dataset.bound) return;
+    el.dataset.bound = "1";
+    el.addEventListener("change", () => {
+      prefs[key] = el.checked;
+      global.UserPrefs.save(prefs);
+      if (key === "showSignOutFloat") global.SignOutFloat?.update?.();
+    });
+  }
 
-    bindThemeSegment(prefs);
+  function bindFullscreenHintToggle(prefs) {
+    const btn = $("settings-fullscreen-hint-toggle");
+    if (!btn) return;
 
-    const motion = $("settings-reduce-motion");
-
-    if (motion) {
-
-      motion.checked = !!prefs.reduceMotion;
-
-      motion.addEventListener("change", () => {
-
-        prefs.reduceMotion = motion.checked;
-
-        global.UserPrefs.save(prefs);
-
-        if (motion.checked) {
-
-          document.querySelectorAll(".earnings-chart.is-animating").forEach((chart) => {
-
-            chart.classList.remove("is-animating");
-
-          });
-
-        }
-
-      });
-
+    function syncToggle() {
+      const on = prefs.showCourseFullscreenHint !== false;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-checked", on ? "true" : "false");
     }
 
+    syncToggle();
+
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+
+    btn.addEventListener("click", () => {
+      prefs.showCourseFullscreenHint = !btn.classList.contains("is-on");
+      global.UserPrefs.save(prefs);
+      syncToggle();
+    });
+  }
+
+  function bindSignOutFloatToggle(prefs) {
+    const btn = $("settings-sign-out-float-toggle");
+    if (!btn) return;
+
+    function syncToggle() {
+      const on = prefs.showSignOutFloat !== false;
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-checked", on ? "true" : "false");
+    }
+
+    syncToggle();
+
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "1";
+
+    btn.addEventListener("click", () => {
+      prefs.showSignOutFloat = !btn.classList.contains("is-on");
+      global.UserPrefs.save(prefs);
+      syncToggle();
+      global.SignOutFloat?.update?.();
+    });
+  }
+
+  function initAppearance(prefs) {
+    bindThemeSegment(prefs);
+    bindPrefCheckbox("settings-reduce-motion", "reduceMotion", prefs);
+    bindPrefCheckbox("settings-nav-hints", "showNavHints", prefs);
+    bindPrefCheckbox("settings-compact-tables", "compactTables", prefs);
+    bindFullscreenHintToggle(prefs);
+    bindSignOutFloatToggle(prefs);
+    const motion = $("settings-reduce-motion");
+    motion?.addEventListener("change", () => {
+      if (motion.checked) {
+        document.querySelectorAll(".earnings-chart.is-animating").forEach((chart) => {
+          chart.classList.remove("is-animating");
+        });
+      }
+    });
   }
 
 
@@ -426,7 +473,298 @@
 
   }
 
+  function initPayout() {
+    const PS = global.PayoutSetup;
+    if (!PS) return;
 
+    const listEl = $("settings-payout-list");
+    const emptyEl = $("settings-payout-empty");
+    const addBtn = $("settings-payout-add-btn");
+    const addPanel = $("settings-payout-add-panel");
+    const methodsEl = $("settings-payout-methods");
+    const inputPanel = $("settings-payout-input-panel");
+    const inputEl = $("settings-payout-link-input");
+    const fieldLabel = $("settings-payout-field-label");
+    const hintEl = $("settings-payout-input-hint");
+    const saveBtn = $("settings-payout-save");
+    const cancelBtn = $("settings-payout-cancel-add");
+    const defaultBtn = $("settings-payout-set-default-btn");
+    const defaultDialog = $("settings-payout-default-dialog");
+    const defaultOptions = $("settings-payout-default-options");
+    const defaultSaveBtn = $("settings-payout-default-save");
+    const defaultCancelBtn = $("settings-payout-default-cancel");
+    const defaultCloseBtn = $("settings-payout-default-close");
+    const status = $("settings-payout-status");
+
+    let methods = [];
+    let selectedMethod = null;
+    let adding = false;
+    let defaultPick = null;
+
+    function showPayoutStatus(msg, ok) {
+      showStatus(status, msg, ok);
+    }
+
+    function syncPayoutToolbar() {
+      const multi = methods.length > 1;
+      if (defaultBtn) {
+        defaultBtn.hidden = !multi || adding;
+        defaultBtn.disabled = !multi;
+      }
+      if (addBtn) addBtn.hidden = adding;
+    }
+
+    function closeDefaultDialog() {
+      defaultDialog?.close();
+    }
+
+    function renderDefaultDialogOptions() {
+      if (!defaultOptions) return;
+      defaultPick = methods[0]?.method || null;
+      defaultOptions.innerHTML = methods
+        .map((m, i) => {
+          const meta = PS.methodMeta(m.method);
+          const short = meta?.short || PS.methodLabel(m.method).charAt(0);
+          const checked = i === 0;
+          const plain = PS.isPlainTextMethod(m.method);
+          const detail = plain
+            ? `<span class="settings-payout-default-detail">${PS.esc(m.link)}</span>`
+            : `<span class="settings-payout-default-detail">${PS.esc(m.link)}</span>`;
+          return (
+            `<label class="settings-payout-default-option${checked ? " is-selected" : ""}">` +
+            `<input type="radio" name="settings-payout-default" value="${PS.esc(m.method)}"${checked ? " checked" : ""}>` +
+            `<span class="payout-method-icon payout-method-${PS.esc(m.method)} settings-payout-item-icon" aria-hidden="true">${PS.esc(short)}</span>` +
+            `<span class="settings-payout-default-copy">` +
+            `<span class="settings-payout-default-label">${PS.esc(PS.methodLabel(m.method))}</span>` +
+            detail +
+            `</span></label>`
+          );
+        })
+        .join("");
+
+      defaultOptions.querySelectorAll('input[type="radio"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          if (!input.checked) return;
+          defaultPick = input.value;
+          defaultOptions.querySelectorAll(".settings-payout-default-option").forEach((label) => {
+            label.classList.toggle(
+              "is-selected",
+              label.querySelector('input[type="radio"]')?.value === defaultPick
+            );
+          });
+        });
+      });
+    }
+
+    function openDefaultDialog() {
+      if (methods.length <= 1 || !defaultDialog) return;
+      renderDefaultDialogOptions();
+      if (typeof defaultDialog.showModal === "function") {
+        defaultDialog.showModal();
+      } else {
+        defaultDialog.setAttribute("open", "");
+      }
+    }
+
+    function renderList() {
+      if (!listEl) return;
+      if (!methods.length) {
+        listEl.hidden = true;
+        listEl.innerHTML = "";
+        if (emptyEl) emptyEl.hidden = false;
+        syncPayoutToolbar();
+        return;
+      }
+      if (emptyEl) emptyEl.hidden = true;
+      listEl.hidden = false;
+
+      listEl.innerHTML = methods
+        .map((m, i) => {
+          const meta = PS.methodMeta(m.method);
+          const short = meta?.short || PS.methodLabel(m.method).charAt(0);
+          const plain = PS.isPlainTextMethod(m.method);
+          const linkHtml = plain
+            ? `<span class="settings-payout-link-text">${PS.esc(m.link)}</span>`
+            : `<a class="link-bold-blue settings-payout-link" href="${PS.esc(m.link)}" target="_blank" rel="noopener">${PS.esc(m.link)}</a>`;
+          const isDefault = i === 0;
+          const primaryBadge = isDefault
+            ? `<span class="settings-payout-primary-badge">Default</span>`
+            : "";
+          return (
+            `<li class="settings-payout-item${isDefault ? " is-default" : ""}">` +
+            `<div class="settings-payout-item-main">` +
+            `<span class="payout-method-icon payout-method-${PS.esc(m.method)} settings-payout-item-icon" aria-hidden="true">${PS.esc(short)}</span>` +
+            `<div class="settings-payout-item-copy">` +
+            `<p class="settings-payout-item-title">${PS.esc(PS.methodLabel(m.method))} ${primaryBadge}</p>` +
+            linkHtml +
+            `</div></div>` +
+            `<div class="settings-payout-item-actions">` +
+            `<button type="button" class="settings-payout-remove payout-saved-remove" data-remove-method="${PS.esc(m.method)}" aria-label="Remove ${PS.esc(PS.methodLabel(m.method))}">×</button>` +
+            `</div></li>`
+          );
+        })
+        .join("");
+
+      syncPayoutToolbar();
+
+      listEl.querySelectorAll("[data-remove-method]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.removeMethod;
+          if (!id || btn.disabled) return;
+          btn.disabled = true;
+          showPayoutStatus("Removing…", true);
+          try {
+            methods = await PS.removeOne(id);
+            renderList();
+            showPayoutStatus(
+              methods.length
+                ? "Removed from your account and Supabase."
+                : "All payout methods removed from your account and Supabase.",
+              true
+            );
+          } catch (e) {
+            console.warn(e);
+            showPayoutStatus(e.message || "Could not remove.", false);
+          }
+          btn.disabled = false;
+        });
+      });
+    }
+
+    function closeAddPanel() {
+      adding = false;
+      selectedMethod = null;
+      if (addPanel) addPanel.hidden = true;
+      if (inputPanel) inputPanel.hidden = true;
+      if (inputEl) inputEl.value = "";
+      syncPayoutToolbar();
+      methodsEl?.querySelectorAll(".payout-method-btn").forEach((b) => {
+        b.setAttribute("aria-pressed", "false");
+      });
+    }
+
+    function bindMethodPicker() {
+      if (!methodsEl || methodsEl.dataset.bound === "1") return;
+      methodsEl.dataset.bound = "1";
+      methodsEl.innerHTML = PS.renderMethodButtons(null);
+      methodsEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".payout-method-btn[data-method]");
+        if (!btn) return;
+        selectedMethod = btn.dataset.method;
+        const meta = PS.methodMeta(selectedMethod);
+        const existing = methods.find((m) => m.method === selectedMethod);
+        if (inputPanel) inputPanel.hidden = false;
+        if (fieldLabel) {
+          fieldLabel.textContent = meta?.fieldLabel || "Payout details";
+        }
+        if (inputEl) {
+          inputEl.placeholder = meta?.placeholder || "";
+          inputEl.value = existing?.link || "";
+          inputEl.focus();
+        }
+        if (hintEl) hintEl.textContent = meta?.hint || "";
+        methodsEl.querySelectorAll(".payout-method-btn").forEach((b) => {
+          b.setAttribute("aria-pressed", b.dataset.method === selectedMethod ? "true" : "false");
+        });
+      });
+    }
+
+    function openAddPanel() {
+      adding = true;
+      if (addPanel) addPanel.hidden = false;
+      syncPayoutToolbar();
+      bindMethodPicker();
+    }
+
+    addBtn?.addEventListener("click", openAddPanel);
+    cancelBtn?.addEventListener("click", closeAddPanel);
+    defaultBtn?.addEventListener("click", openDefaultDialog);
+    defaultCancelBtn?.addEventListener("click", closeDefaultDialog);
+    defaultCloseBtn?.addEventListener("click", closeDefaultDialog);
+    defaultDialog?.addEventListener("cancel", (e) => {
+      e.preventDefault();
+      closeDefaultDialog();
+    });
+    defaultDialog?.addEventListener("click", (e) => {
+      if (e.target === defaultDialog) closeDefaultDialog();
+    });
+    defaultSaveBtn?.addEventListener("click", async () => {
+      if (!defaultPick || methods.length <= 1) {
+        closeDefaultDialog();
+        return;
+      }
+      if (defaultPick === methods[0]?.method) {
+        closeDefaultDialog();
+        return;
+      }
+      defaultSaveBtn.disabled = true;
+      showPayoutStatus("Updating default…", true);
+      try {
+        methods = await PS.setDefaultPayout(defaultPick);
+        renderList();
+        closeDefaultDialog();
+        showPayoutStatus(
+          PS.methodLabel(defaultPick) + " is now your default payout method.",
+          true
+        );
+        setTimeout(() => {
+          if (status?.textContent?.includes("default payout")) showPayoutStatus("", true);
+        }, 2200);
+      } catch (e) {
+        console.warn(e);
+        showPayoutStatus(e.message || "Could not set default.", false);
+      }
+      defaultSaveBtn.disabled = false;
+    });
+
+    saveBtn?.addEventListener("click", async () => {
+      if (!selectedMethod) {
+        showPayoutStatus("Choose a payment app first.", false);
+        return;
+      }
+      const link = inputEl?.value?.trim();
+      if (!link) {
+        const meta = PS.methodMeta(selectedMethod);
+        showPayoutStatus(meta?.hint || "Enter your payout details.", false);
+        inputEl?.focus();
+        return;
+      }
+      saveBtn.disabled = true;
+      showPayoutStatus("Saving…", true);
+      try {
+        await PS.saveOne(selectedMethod, link);
+        methods = await PS.fetchAllMine();
+        PS.markPayoutChecklistDone();
+        renderList();
+        closeAddPanel();
+        showPayoutStatus("Saved.", true);
+        setTimeout(() => {
+          if (status?.textContent === "Saved.") showPayoutStatus("", true);
+        }, 2000);
+      } catch (e) {
+        console.warn(e);
+        showPayoutStatus(e.message || "Could not save.", false);
+      }
+      saveBtn.disabled = false;
+    });
+
+    inputEl?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveBtn?.click();
+      }
+    });
+
+    (async () => {
+      try {
+        methods = await PS.fetchAllMine();
+        renderList();
+      } catch (e) {
+        console.warn("Payout load failed", e);
+        showPayoutStatus("Could not load payout methods.", false);
+      }
+    })();
+  }
 
   function mount() {
 
@@ -439,6 +777,8 @@
     const prefs = global.UserPrefs.get();
 
     initProfile(rep);
+
+    initPayout();
 
     initPin(rep);
 

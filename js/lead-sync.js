@@ -1,5 +1,6 @@
 /**
- * Shared "called" status — Supabase when configured, else localStorage.
+ * Team lead workflow (Complete, Pending) — Supabase when configured.
+ * Per-rep overlay: Removed only. Quick Save + Pin live in leads-page (RepStorage).
  */
 (function (global) {
   const STATUS_KEY = "lpc_leads_status_v1";
@@ -12,21 +13,34 @@
   let realtimeTimer = null;
   let lastMapJson = "";
 
-  function workflowKey() {
-    const id = global.RepSession?.get?.()?.id || "anon";
-    return "lpc_lead_workflow_" + id + "_v1";
+  const WORKFLOW_KEY = "lpc_lead_workflow_v1";
+
+  function loadWorkflowRaw() {
+    if (global.RepStorage?.loadItem) return global.RepStorage.loadItem(WORKFLOW_KEY);
+    const id = global.RepSession?.get?.()?.id;
+    const key = id ? "lpc_rep_" + id + "_" + WORKFLOW_KEY : WORKFLOW_KEY;
+    return localStorage.getItem(key);
+  }
+
+  function saveWorkflowRaw(json) {
+    if (global.RepStorage?.saveItem) global.RepStorage.saveItem(WORKFLOW_KEY, json);
+    else {
+      const id = global.RepSession?.get?.()?.id;
+      const key = id ? "lpc_rep_" + id + "_" + WORKFLOW_KEY : WORKFLOW_KEY;
+      localStorage.setItem(key, json);
+    }
   }
 
   function loadWorkflowOverlay() {
     try {
-      return JSON.parse(localStorage.getItem(workflowKey()) || "{}");
+      return JSON.parse(loadWorkflowRaw() || "{}");
     } catch (e) {
       return {};
     }
   }
 
   function saveWorkflowOverlay(overlay) {
-    localStorage.setItem(workflowKey(), JSON.stringify(overlay || {}));
+    saveWorkflowRaw(JSON.stringify(overlay || {}));
   }
 
   function saveWorkflowOverlayEntry(leadId, workflow) {
@@ -35,10 +49,7 @@
     if (!w) {
       delete overlay[leadId];
     } else {
-      overlay[leadId] = {
-        workflow: w,
-        called: w === "complete",
-      };
+      overlay[leadId] = { workflow: w, called: false };
     }
     saveWorkflowOverlay(overlay);
   }
@@ -50,9 +61,12 @@
     if (w === "removed") {
       next[leadId] = { workflow: "removed", called: false };
     } else if (w === "pending") {
-      next[leadId] = { workflow: "pending", called: false };
-    } else if (w === "flagged") {
-      next[leadId] = { workflow: "flagged", called: false };
+      next[leadId] = {
+        workflow: "pending",
+        called: false,
+        pendingBy: getRepName(),
+        pendingAt: new Date().toISOString(),
+      };
     } else if (w === "complete") {
       next[leadId] = {
         workflow: "complete",
@@ -69,10 +83,14 @@
     return next;
   }
 
-  function mergeWorkflow(map) {
+  /** Only per-rep "removed" — not team Complete/Pending. */
+  function mergePersonalOverlay(map) {
     const overlay = loadWorkflowOverlay();
     Object.keys(overlay).forEach((id) => {
-      map[id] = { ...(map[id] || {}), ...overlay[id] };
+      const w = overlay[id]?.workflow;
+      if (w === "removed") {
+        map[id] = { ...(map[id] || {}), ...overlay[id], workflow: "removed", called: false };
+      }
     });
     return map;
   }
@@ -88,7 +106,8 @@
   }
 
   function normalizeEntry(entry) {
-    const workflow = entry?.workflow || (entry?.called ? "complete" : "");
+    let workflow = entry?.workflow || (entry?.called ? "complete" : "");
+    if (workflow === "flagged") workflow = "";
     const called = workflow === "complete" || !!entry?.called;
     return {
       ...entry,
@@ -144,33 +163,46 @@
     localStorage.setItem(STATUS_KEY, JSON.stringify(map));
   }
 
+  function rowWorkflow(row) {
+    const w = String(row?.workflow || "").trim();
+    if (w === "pending") return "pending";
+    if (w === "complete" || row?.called) return "complete";
+    return "";
+  }
+
   function rowsToMap(rows) {
     const map = {};
     (rows || []).forEach((row) => {
+      const workflow = rowWorkflow(row);
       map[row.lead_id] = normalizeEntry({
-        called: !!row.called,
-        workflow: row.called ? "complete" : "",
+        called: workflow === "complete",
+        workflow,
         calledBy: row.called_by || "",
         calledAt: row.called_at || "",
+        pendingBy: workflow === "pending" ? row.called_by || "" : "",
+        pendingAt: workflow === "pending" ? row.called_at || "" : "",
+        businessName: row.business_name || "",
       });
     });
-    return mergeWorkflow(map);
+    return mergePersonalOverlay(map);
   }
 
   async function fetchTeam() {
     const { data, error } = await client
       .from("lead_status")
-      .select("lead_id,business_name,called,called_by,called_at");
+      .select("lead_id,business_name,called,called_by,called_at,workflow");
     if (error) throw error;
     return rowsToMap(data);
   }
 
-  async function upsertTeam(leadId, called, businessName) {
+  async function upsertTeam(leadId, workflow, businessName) {
+    const w = String(workflow || "").trim();
     const row = {
       lead_id: leadId,
-      called: !!called,
-      called_by: called ? getRepName() : null,
-      called_at: called ? new Date().toISOString() : null,
+      called: w === "complete",
+      workflow: w || null,
+      called_by: w === "complete" || w === "pending" ? getRepName() : null,
+      called_at: w === "complete" || w === "pending" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     };
     const name = String(businessName || "").trim();
@@ -179,13 +211,26 @@
     if (error) throw error;
   }
 
+  async function deleteTeamStatus(leadId) {
+    const { error } = await client.from("lead_status").delete().eq("lead_id", leadId);
+    if (error) throw error;
+  }
+
   async function migrateLocalToTeam() {
     const local = loadLocal();
-    const ids = Object.keys(local).filter((id) => local[id]?.called);
-    if (!ids.length) return;
+    const overlay = loadWorkflowOverlay();
+    const ids = new Set([
+      ...Object.keys(local).filter((id) => local[id]?.called),
+      ...Object.keys(overlay).filter((id) => overlay[id]?.workflow === "pending"),
+    ]);
     for (const id of ids) {
       try {
-        await upsertTeam(id, true, local[id]?.businessName);
+        if (local[id]?.called) {
+          await upsertTeam(id, "complete", local[id]?.businessName);
+        } else if (overlay[id]?.workflow === "pending") {
+          await upsertTeam(id, "pending", overlay[id]?.businessName);
+          saveWorkflowOverlayEntry(id, "");
+        }
       } catch (e) {
         console.warn("Lead sync migrate:", id, e);
       }
@@ -216,40 +261,46 @@
       .subscribe();
   }
 
+  function buildLocalApi() {
+    return {
+      mode: "local",
+      async setWorkflow(leadId, workflow, businessName) {
+        let map = {};
+        Object.entries(loadLocal()).forEach(([id, entry]) => {
+          const n = normalizeEntry(entry);
+          if (n.workflow === "complete" || n.workflow === "pending") map[id] = n;
+        });
+        if (workflow === "removed") {
+          saveWorkflowOverlayEntry(leadId, "removed");
+        } else {
+          saveWorkflowOverlayEntry(leadId, "");
+          map = applyWorkflow(map, leadId, workflow, businessName);
+        }
+        const persist = {};
+        Object.entries(map).forEach(([id, entry]) => {
+          if (entry.workflow === "complete" || entry.workflow === "pending") persist[id] = entry;
+        });
+        saveLocal(persist);
+        emitUpdate(mergePersonalOverlay(map), { mode: "local" });
+      },
+      async setCalled(leadId, called, businessName) {
+        return this.setWorkflow(leadId, called ? "complete" : "active", businessName);
+      },
+    };
+  }
+
   async function init(callback) {
     onUpdate = callback;
 
     if (!canUseTeam()) {
       mode = "local";
-      emitUpdate(mergeWorkflow(loadLocal()), { mode: "local" });
-      return {
-        mode: "local",
-        async setWorkflow(leadId, workflow, businessName) {
-          let map = {};
-          Object.entries(loadLocal()).forEach(([id, entry]) => {
-            map[id] = normalizeEntry(entry);
-          });
-          map = applyWorkflow(map, leadId, workflow, businessName);
-          const persist = {};
-          Object.entries(map).forEach(([id, entry]) => {
-            if (
-              entry.workflow === "removed" ||
-              entry.workflow === "flagged" ||
-              entry.workflow === "pending"
-            ) {
-              persist[id] = entry;
-            } else if (entry.called) {
-              persist[id] = entry;
-            }
-          });
-          saveLocal(persist);
-          saveWorkflowOverlayEntry(leadId, workflow === "complete" ? "" : workflow);
-          emitUpdate(mergeWorkflow(map), { mode: "local" });
-        },
-        async setCalled(leadId, called, businessName) {
-          return this.setWorkflow(leadId, called ? "complete" : "", businessName);
-        },
-      };
+      let map = {};
+      Object.entries(loadLocal()).forEach(([id, entry]) => {
+        const n = normalizeEntry(entry);
+        if (n.workflow === "complete" || n.workflow === "pending") map[id] = n;
+      });
+      emitUpdate(mergePersonalOverlay(map), { mode: "local" });
+      return buildLocalApi();
     }
 
     try {
@@ -265,54 +316,29 @@
       return {
         mode: "team",
         async setWorkflow(leadId, workflow, businessName) {
-          if (!workflow || workflow === "active") {
-            await upsertTeam(leadId, false, businessName);
-            saveWorkflowOverlayEntry(leadId, "");
-          } else if (workflow === "complete") {
-            await upsertTeam(leadId, true, businessName);
-            saveWorkflowOverlayEntry(leadId, "");
-          } else if (workflow === "pending") {
-            await upsertTeam(leadId, false, businessName);
-            saveWorkflowOverlayEntry(leadId, "pending");
+          const w = String(workflow || "").trim();
+          if (w === "removed") {
+            saveWorkflowOverlayEntry(leadId, "removed");
           } else {
-            await upsertTeam(leadId, false, businessName);
-            saveWorkflowOverlayEntry(leadId, workflow);
+            saveWorkflowOverlayEntry(leadId, "");
+            if (!w || w === "active") {
+              await deleteTeamStatus(leadId);
+            } else if (w === "complete" || w === "pending") {
+              await upsertTeam(leadId, w, businessName);
+            }
           }
           const next = await fetchTeam();
           emitUpdate(next, { mode: "team" });
         },
         async setCalled(leadId, called, businessName) {
-          return this.setWorkflow(leadId, called ? "complete" : "pending", businessName);
+          return this.setWorkflow(leadId, called ? "complete" : "active", businessName);
         },
       };
     } catch (e) {
       console.error("LeadSync: could not connect, using this device only", e);
       mode = "local";
-      const map = loadLocal();
-      emitUpdate(map, { mode: "local", error: true });
-      return {
-        mode: "local",
-        async setWorkflow(leadId, workflow, businessName) {
-          let map = {};
-          Object.entries(loadLocal()).forEach(([id, entry]) => {
-            map[id] = normalizeEntry(entry);
-          });
-          map = applyWorkflow(map, leadId, workflow, businessName);
-          const persist = {};
-          Object.entries(map).forEach(([id, entry]) => {
-            if (entry.workflow === "removed" || entry.workflow === "flagged" || entry.workflow === "pending") {
-              persist[id] = entry;
-            } else if (entry.called) {
-              persist[id] = entry;
-            }
-          });
-          saveLocal(persist);
-          emitUpdate(mergeWorkflow(map), { mode: "local" });
-        },
-        async setCalled(leadId, called, businessName) {
-          return this.setWorkflow(leadId, called ? "complete" : "pending", businessName);
-        },
-      };
+      emitUpdate(mergePersonalOverlay(loadLocal()), { mode: "local", error: true });
+      return buildLocalApi();
     }
   }
 

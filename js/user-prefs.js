@@ -1,5 +1,5 @@
 /**
- * Per-rep UI preferences (theme, sidebar, motion) — synced via RepStorage.
+ * Per-rep UI preferences — synced via RepStorage.
  */
 (function (global) {
   const PREFS_KEY = "lpc_user_prefs_v1";
@@ -7,6 +7,10 @@
   const DEFAULT_PREFS = {
     theme: "light",
     reduceMotion: false,
+    showCourseFullscreenHint: true,
+    showSignOutFloat: true,
+    showNavHints: true,
+    compactTables: false,
   };
 
   function loadRaw() {
@@ -20,7 +24,8 @@
   }
 
   function save(prefs) {
-    const json = JSON.stringify(prefs);
+    const merged = { ...DEFAULT_PREFS, ...prefs };
+    const json = JSON.stringify(merged);
     if (global.RepStorage?.saveItem) global.RepStorage.saveItem(PREFS_KEY, json);
     else {
       const id = global.RepSession?.get?.()?.id;
@@ -28,19 +33,61 @@
       localStorage.setItem(key, json);
     }
     if (global.SiteTheme) {
-      global.SiteTheme.apply(prefs.theme || "light", {
+      global.SiteTheme.apply(merged.theme || "light", {
         persistDevice: true,
-        reduceMotion: !!prefs.reduceMotion,
+        reduceMotion: !!merged.reduceMotion,
       });
-      localStorage.setItem(global.SiteTheme.DEVICE_KEY, prefs.theme || "light");
+      localStorage.setItem(global.SiteTheme.DEVICE_KEY, merged.theme || "light");
+    }
+    if (merged.showNavHints === false) {
+      document.documentElement.setAttribute("data-hide-nav-hints", "1");
+    } else {
+      document.documentElement.removeAttribute("data-hide-nav-hints");
+    }
+    if (merged.compactTables) {
+      document.documentElement.setAttribute("data-compact-tables", "1");
+    } else {
+      document.documentElement.removeAttribute("data-compact-tables");
     }
     global.dispatchEvent(new Event("user-prefs-changed"));
   }
+
+  function resetToDefaults() {
+    save({ ...DEFAULT_PREFS });
+  }
+
+  function showCourseFullscreenHint() {
+    return loadRaw().showCourseFullscreenHint !== false;
+  }
+
+  function showSignOutFloat() {
+    return loadRaw().showSignOutFloat !== false;
+  }
+
+  function applyDomHints() {
+    const prefs = loadRaw();
+    if (prefs.showNavHints === false) {
+      document.documentElement.setAttribute("data-hide-nav-hints", "1");
+    } else {
+      document.documentElement.removeAttribute("data-hide-nav-hints");
+    }
+    if (prefs.compactTables) {
+      document.documentElement.setAttribute("data-compact-tables", "1");
+    } else {
+      document.documentElement.removeAttribute("data-compact-tables");
+    }
+  }
+
+  applyDomHints();
+  global.addEventListener("user-prefs-changed", applyDomHints);
 
   global.UserPrefs = {
     PREFS_KEY,
     DEFAULT_PREFS,
     get: loadRaw,
     save,
+    resetToDefaults,
+    showCourseFullscreenHint,
+    showSignOutFloat,
   };
 })(window);

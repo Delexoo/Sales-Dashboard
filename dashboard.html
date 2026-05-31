@@ -12,96 +12,145 @@
   <div id="shell"></div>
   <div id="page-body">
     <div class="dash-header">
-      <div class="page-hero">
-        <p class="page-label" data-icon="layout-dashboard">Performance dashboard</p>
-        <h1>Sales Team Dashboard</h1>
-        <p class="lead" style="margin-bottom:0">Track your closes, commission, and income goal.</p>
+      <div class="page-hero dash-page-hero">
+        <p class="page-label" data-icon="layout-dashboard">Home</p>
+        <h1>Dashboard</h1>
+        <p class="lead dash-page-lead">Track goals, log sales, and jump to your daily tools.</p>
       </div>
     </div>
 
     <div class="dash-hub">
-      <section class="dash-tracker card" id="sales-tracker">
-        <div class="dash-tracker-top">
-          <div class="dash-tracker-goal-wrap">
-            <span class="dash-tracker-label">Income goal</span>
-            <div class="dash-goal-editor" id="dash-goal-editor">
-              <button type="button" class="dash-goal-btn" id="goal-display-btn" aria-label="Edit income goal">
-                $<span id="goal-display-value">2,000</span>
-              </button>
-              <label class="dash-goal-edit">
-                $<input type="text" id="tracker-goal" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Income goal amount" placeholder="2000">
-              </label>
+      <nav class="dash-quicklinks" aria-label="Quick links">
+        <a class="dash-quicklink" href="settings.html" data-icon="settings">
+          <span class="dash-quicklink-text">Settings</span>
+        </a>
+        <a class="dash-quicklink" href="faq.html" data-icon="help-circle">
+          <span class="dash-quicklink-text">FAQ</span>
+        </a>
+        <a class="dash-quicklink" href="resources.html" data-icon="external-link">
+          <span class="dash-quicklink-text">All links</span>
+        </a>
+        <a class="dash-quicklink" href="template.html" data-icon="file-plus">
+          <span class="dash-quicklink-text">Lead Builder</span>
+        </a>
+        <a class="dash-quicklink" href="owner.html" data-icon="message-square">
+          <span class="dash-quicklink-text">Meet the Owner</span>
+        </a>
+      </nav>
+
+      <section class="card dash-board" id="sales-tracker">
+        <div class="dash-board-performance">
+          <div class="dash-perf-main">
+            <div
+              class="dash-goal-ring"
+              role="img"
+              aria-label="Income goal progress"
+            >
+              <svg class="dash-goal-ring-svg" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="dash-goal-ring-track" cx="50" cy="50" r="42" fill="none" />
+                <circle
+                  class="dash-goal-ring-fill"
+                  id="goal-ring-progress"
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  transform="rotate(-90 50 50)"
+                />
+              </svg>
+              <div class="dash-goal-ring-center">
+                <span class="dash-goal-ring-pct" id="goal-pct-badge">0%</span>
+              </div>
             </div>
-            <span class="dash-goal-edit-hint">Click to edit</span>
+
+            <div class="dash-goal-copy">
+              <div class="dash-goal-editor-block">
+                <span class="dash-tracker-label">Income goal</span>
+                <div class="dash-goal-editor" id="dash-goal-editor">
+                  <button type="button" class="dash-goal-btn" id="goal-display-btn" aria-label="Edit income goal">
+                    $<span id="goal-display-value">2,000</span>
+                  </button>
+                  <label class="dash-goal-edit">
+                    $<input type="text" id="tracker-goal" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Income goal amount" placeholder="2000">
+                  </label>
+                </div>
+                <span class="dash-goal-edit-hint">Click to edit</span>
+              </div>
+              <p class="dash-goal-meta">
+                <span class="dash-tracker-status" id="goal-pct-label">$0 of $2,000</span>
+                <span class="dash-goal-meta-sep" aria-hidden="true">·</span>
+                <span class="dash-tracker-hint" id="tracker-remaining">$2,000 to go</span>
+              </p>
+            </div>
           </div>
-          <div class="dash-tracker-pct-ring" aria-hidden="true">
-            <span class="dash-tracker-pct-val" id="goal-pct-badge">0%</span>
+
+          <div class="dash-perf-stats">
+            <div class="dash-stat-chip dash-stat-chip--earn">
+              <span class="dash-tracker-stat-val" id="tracker-earned">$0</span>
+              <span class="dash-tracker-stat-lbl">Commission earned</span>
+            </div>
+            <div class="dash-stat-chip">
+              <span class="dash-tracker-stat-val dash-stat-neutral" id="tracker-closes">0</span>
+              <span class="dash-tracker-stat-lbl">Sales</span>
+            </div>
           </div>
         </div>
 
-        <div class="dash-tracker-progress">
-          <div class="goal-bar-wrap dash-tracker-bar"><div class="goal-bar" id="goal-bar" style="width:0%"></div></div>
-          <div class="dash-tracker-meta">
-            <p class="dash-tracker-status" id="goal-pct-label">$0 of $2,000</p>
-            <p class="dash-tracker-hint" id="tracker-remaining">$2,000 to go</p>
+        <div class="dash-board-work">
+          <div class="dash-board-log" id="log-close-section">
+            <header class="dash-board-work-head">
+              <h2 class="dash-board-work-title" data-icon="plus-circle">Log a sale</h2>
+            </header>
+            <form id="close-form" class="close-form dash-sale-form" autocomplete="off">
+              <div class="dash-sale-fields">
+                <div class="dash-sale-field dash-sale-field--amount">
+                  <label class="dash-sale-label" for="close-price">Sale amount</label>
+                  <div class="dash-sale-money">
+                    <span class="dash-sale-money-symbol" aria-hidden="true">$</span>
+                    <input
+                      type="text"
+                      class="dash-sale-money-input"
+                      id="close-price"
+                      inputmode="decimal"
+                      pattern="[0-9.]*"
+                      placeholder="600"
+                      required
+                    >
+                  </div>
+                </div>
+                <div class="dash-sale-field dash-sale-field--business">
+                  <label class="dash-sale-label" for="close-business">Business name</label>
+                  <input
+                    type="text"
+                    class="dash-sale-input"
+                    id="close-business"
+                    placeholder="Optional"
+                    autocomplete="organization"
+                  >
+                </div>
+              </div>
+              <button type="submit" class="btn dash-close-submit dash-sale-submit" data-icon="plus-circle" data-icon-class="ico-btn">Log a sale</button>
+            </form>
           </div>
-        </div>
 
-        <div class="dash-tracker-stats">
-          <div class="dash-stat-card">
-            <span class="dash-tracker-stat-val" id="tracker-earned">$0</span>
-            <span class="dash-tracker-stat-lbl">Commission earned</span>
-          </div>
-          <div class="dash-stat-card">
-            <span class="dash-tracker-stat-val dash-stat-neutral" id="tracker-closes">0</span>
-            <span class="dash-tracker-stat-lbl">Deals closed</span>
+          <div class="dash-board-history dash-deals-panel" id="deals-section">
+            <header class="dash-board-work-head dash-board-work-head--row">
+              <h2 class="dash-board-work-title" data-icon="layers">Your sales</h2>
+              <span class="deals-count" id="deals-count-label">0 sales</span>
+            </header>
+            <div class="dash-empty" id="deals-empty">
+              <p class="dash-empty-title">No sales yet</p>
+              <p class="dash-empty-desc">Log your first sale — commission updates automatically.</p>
+            </div>
+            <ul class="deals-list" id="deals-list"></ul>
           </div>
         </div>
       </section>
-      <script src="js/tracker-preflash.js"></script>
-
-      <div class="dash-closes-row">
-        <section class="card dash-section dash-log-panel" id="log-close-section">
-          <div class="dash-panel-head">
-            <h2 class="section-head" data-icon="plus-circle">Log a close</h2>
-            <p class="section-desc">Record the sale amount. Add a business name if you have one.</p>
-          </div>
-
-          <form id="close-form" class="close-form dash-close-form" autocomplete="off">
-            <div class="dash-close-fields">
-              <div class="field dash-field-price">
-                <label for="close-price">Sale amount</label>
-                <div class="dash-input-money">
-                  <span class="dash-input-prefix" aria-hidden="true">$</span>
-                  <input type="text" id="close-price" inputmode="decimal" pattern="[0-9.]*" placeholder="600" required>
-                </div>
-              </div>
-              <div class="field dash-field-business">
-                <label for="close-business">Business name <span class="label-opt">optional</span></label>
-                <input type="text" id="close-business" placeholder="Business name" autocomplete="organization">
-              </div>
-            </div>
-            <button type="submit" class="btn dash-close-submit" data-icon="plus-circle" data-icon-class="ico-btn">Log close</button>
-          </form>
-        </section>
-
-        <section class="card dash-section dash-deals-panel" id="deals-section">
-          <div class="deals-head">
-            <h2 class="section-head" data-icon="layers" style="margin:0">Your closes</h2>
-            <span class="deals-count" id="deals-count-label">0 saved</span>
-          </div>
-          <div class="dash-empty" id="deals-empty">
-            <p class="dash-empty-title">No closes yet</p>
-            <p class="dash-empty-desc">Log your first sale — commission updates automatically.</p>
-          </div>
-          <ul class="deals-list" id="deals-list"></ul>
-        </section>
-      </div>
     </div>
-
+    <script src="js/tracker-preflash.js"></script>
   </div>
   <script src="js/config.js"></script>
-  <script src="js/config-merge.js"></script>
+  <script src="js/image-preload.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/icons.js"></script>
   <script src="js/rep-session.js"></script>
@@ -110,6 +159,7 @@
   <script src="js/theme.js"></script>
   <script src="js/lock.js"></script>
   <script src="js/layout-fix.js"></script>
+  <script src="js/course-modules.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

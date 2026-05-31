@@ -1,16 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-login-redirect="entry">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sales Team Dashboard</title>
-  <link rel="canonical" href="setup.html">
-  <meta http-equiv="refresh" content="0;url=setup.html">
-  <script>location.replace("setup.html");</script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
 </head>
-<body>
-  <p style="font-family:system-ui,sans-serif;padding:24px">
-    <a href="setup.html">Continue to Start here</a>
+<body data-public="0">
+  <p class="login-redirect-msg" style="font-family:var(--font,system-ui,sans-serif);padding:24px;color:var(--muted,#64748b)">
+    Loading…
   </p>
+  <script src="js/config.js"></script>
+  <script src="js/image-preload.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/rep-session.js"></script>
+  <script src="js/rep-settings-sync.js"></script>
+  <script src="js/course-modules.js"></script>
+  <script src="js/lock.js"></script>
+  <script src="js/login-redirect.js"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@
 (function (global) {
   const STORAGE_KEY = "lpc_rep_session_v1";
   const TRACKER_KEY = "lpc_sales_tracker_v2";
+  const SESSION_META_KEY = "lpc_rep_session_meta_v1";
 
   function get() {
     try {
@@ -14,6 +15,23 @@
       return { id: String(o.id), name: String(o.name) };
     } catch (e) {
       return null;
+    }
+  }
+
+  function touchSessionMeta() {
+    try {
+      const raw = global.RepStorage?.loadItem
+        ? global.RepStorage.loadItem(SESSION_META_KEY)
+        : null;
+      const meta = raw ? JSON.parse(raw) : {};
+      const now = new Date().toISOString();
+      if (!meta.firstLoginAt) meta.firstLoginAt = now;
+      meta.lastLoginAt = now;
+      meta.loginCount = (Number(meta.loginCount) || 0) + 1;
+      const json = JSON.stringify(meta);
+      if (global.RepStorage?.saveItem) global.RepStorage.saveItem(SESSION_META_KEY, json);
+    } catch (e) {
+      /* ignore */
     }
   }
 
@@ -120,6 +138,7 @@
     refreshNameDisplays,
     applyToTracker,
     enforceTrackerIdentity,
+    touchSessionMeta,
     STORAGE_KEY,
   };
 })(window);

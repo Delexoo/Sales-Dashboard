@@ -26,6 +26,47 @@
         <p id="settings-profile-status" class="settings-status settings-status-inline" hidden></p>
       </section>
 
+      <section class="card settings-card" id="settings-payout">
+        <h2 class="settings-card-title" data-icon="banknote">Payout methods</h2>
+        <p class="settings-hint muted">How your manager pays you commissions. Use Set as default when you have more than one method saved.</p>
+        <ul class="settings-payout-list" id="settings-payout-list" hidden></ul>
+        <p class="settings-hint muted" id="settings-payout-empty">No payment methods saved yet.</p>
+        <div class="settings-payout-add-panel" id="settings-payout-add-panel" hidden>
+          <p class="field-label" id="settings-payout-add-label">Choose a payment app</p>
+          <div class="payout-methods settings-payout-methods" id="settings-payout-methods" role="group" aria-label="Payment app"></div>
+          <div class="settings-payout-input-panel" id="settings-payout-input-panel" hidden>
+            <label class="field">
+              <span class="field-label" id="settings-payout-field-label">Payout details</span>
+              <input type="text" id="settings-payout-link-input" class="payout-link-input" autocomplete="off" spellcheck="false">
+            </label>
+            <p class="settings-hint muted" id="settings-payout-input-hint"></p>
+            <div class="settings-actions-row">
+              <button type="button" class="btn" id="settings-payout-save">Save</button>
+              <button type="button" class="btn settings-payout-cancel" id="settings-payout-cancel-add">Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-actions-row settings-payout-toolbar">
+          <button type="button" class="btn" id="settings-payout-add-btn">Add payment method</button>
+          <button type="button" class="btn secondary" id="settings-payout-set-default-btn" hidden>Set as default</button>
+        </div>
+        <dialog id="settings-payout-default-dialog" class="settings-payout-dialog" aria-labelledby="settings-payout-default-title">
+          <div class="settings-payout-dialog-panel">
+            <header class="settings-payout-dialog-head">
+              <h3 id="settings-payout-default-title" class="settings-payout-dialog-title">Choose default payout</h3>
+              <button type="button" class="settings-payout-dialog-close payout-saved-remove" id="settings-payout-default-close" aria-label="Close">×</button>
+            </header>
+            <p class="settings-hint muted settings-payout-dialog-sub">Pick which saved method your manager should use first.</p>
+            <div class="settings-payout-default-options" id="settings-payout-default-options" role="radiogroup" aria-label="Default payout method"></div>
+            <footer class="settings-payout-dialog-actions">
+              <button type="button" class="btn secondary" id="settings-payout-default-cancel">Cancel</button>
+              <button type="button" class="btn" id="settings-payout-default-save">Save default</button>
+            </footer>
+          </div>
+        </dialog>
+        <p id="settings-payout-status" class="settings-status" hidden></p>
+      </section>
+
       <section class="card settings-card" id="settings-security">
         <h2 class="settings-card-title" data-icon="shield">Security</h2>
         <label class="field">
@@ -53,11 +94,50 @@
           <button type="button" class="settings-segment-btn" data-theme-pick="dark">Dark</button>
           <button type="button" class="settings-segment-btn" data-theme-pick="system">System</button>
         </div>
-
         <label class="settings-check">
           <input type="checkbox" id="settings-reduce-motion">
           <span>Reduce motion</span>
         </label>
+        <label class="settings-check">
+          <input type="checkbox" id="settings-nav-hints">
+          <span>Show sidebar section hints</span>
+        </label>
+        <label class="settings-check">
+          <input type="checkbox" id="settings-compact-tables">
+          <span>Compact tables on small screens</span>
+        </label>
+        <div class="settings-toggle-row">
+          <div class="settings-toggle-copy">
+            <p class="settings-toggle-label" id="settings-fullscreen-hint-label">Course video tip</p>
+            <p class="settings-hint muted">Show &ldquo;For the best experience don&rsquo;t watch these videos on fullscreen&rdquo; above course videos.</p>
+          </div>
+          <button
+            type="button"
+            class="settings-toggle"
+            id="settings-fullscreen-hint-toggle"
+            role="switch"
+            aria-labelledby="settings-fullscreen-hint-label"
+            aria-checked="true"
+          >
+            <span class="settings-toggle-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="settings-toggle-row">
+          <div class="settings-toggle-copy">
+            <p class="settings-toggle-label" id="settings-sign-out-float-label">Sign out button</p>
+            <p class="settings-hint muted">Show the floating Sign out control in the top-right corner of the screen.</p>
+          </div>
+          <button
+            type="button"
+            class="settings-toggle"
+            id="settings-sign-out-float-toggle"
+            role="switch"
+            aria-labelledby="settings-sign-out-float-label"
+            aria-checked="true"
+          >
+            <span class="settings-toggle-thumb" aria-hidden="true"></span>
+          </button>
+        </div>
       </section>
 
       <section class="card settings-card settings-card-danger">
@@ -68,7 +148,7 @@
     </div>
   </div>
   <script src="js/config.js"></script>
-  <script src="js/config-merge.js"></script>
+  <script src="js/image-preload.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/icons.js"></script>
   <script src="js/rep-session.js"></script>
@@ -77,7 +157,9 @@
   <script src="js/theme.js"></script>
   <script src="js/lock.js"></script>
   <script src="js/layout-fix.js"></script>
+  <script src="js/course-modules.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/payout-setup.js"></script>
   <script src="js/settings.js"></script>
 </body>
 </html>
