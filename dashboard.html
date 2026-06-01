@@ -146,6 +146,24 @@
           </div>
         </div>
       </section>
+
+      <section class="card dash-pending-island dash-pending-section dash-pending-section--empty" id="dash-pending-section" aria-labelledby="dash-pending-title">
+        <header class="dash-pending-head">
+          <div class="dash-pending-head-copy">
+            <h2 class="dash-board-work-title" id="dash-pending-title" data-icon="clock">Pending businesses</h2>
+            <p class="dash-pending-desc">Follow up on leads you marked <strong>Pending</strong> in Lead Finder.</p>
+          </div>
+          <span class="dash-pending-count" id="dash-pending-count">0 pending</span>
+        </header>
+        <div class="dash-empty dash-pending-empty" id="dash-pending-empty">
+          <p class="dash-empty-title">No pending businesses</p>
+          <p class="dash-empty-desc">Mark a lead as Pending in Lead Finder when you plan to call or build their site later.</p>
+        </div>
+        <ul class="dash-pending-list" id="dash-pending-list"></ul>
+        <footer class="dash-pending-foot">
+          <a class="btn secondary dash-pending-view-all" id="dash-pending-view-all" href="leads.html#pending" data-icon="search" data-icon-class="ico-btn">View all in Lead Finder</a>
+        </footer>
+      </section>
     </div>
     <script src="js/tracker-preflash.js"></script>
   </div>
@@ -160,6 +178,10 @@
   <script src="js/lock.js"></script>
   <script src="js/layout-fix.js"></script>
   <script src="js/course-modules.js"></script>
+  <script src="js/leads-loader.js"></script>
+  <script src="js/lead-sync.js"></script>
+  <script src="js/lead-display.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/dashboard-pending.js"></script>
 </body>
 </html>

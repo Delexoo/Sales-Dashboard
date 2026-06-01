@@ -31,6 +31,7 @@
     "lpc_rep_payout_v1",
     "lpc_rep_payouts_list_v1",
     "lpc_rep_session_meta_v1",
+    "lpc_rep_profile_photo_v1",
   ];
 
   let client = null;
@@ -142,6 +143,45 @@
     return JSON.stringify(merged);
   }
 
+  function pinnedIdsFromValue(val) {
+    if (Array.isArray(val)) {
+      return val.map((id) => String(id || "").trim()).filter(Boolean);
+    }
+    if (val && typeof val === "object") {
+      return Object.keys(val)
+        .filter((id) => val[id])
+        .map((id) => String(id).trim())
+        .filter(Boolean);
+    }
+    if (typeof val === "string") {
+      try {
+        return pinnedIdsFromValue(JSON.parse(val));
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  }
+
+  /** Keep local pins when cloud settings load before the latest pin was pushed. */
+  function mergePinnedJson(cloudVal, localRaw) {
+    let local = [];
+    try {
+      local = pinnedIdsFromValue(localRaw ? JSON.parse(localRaw) : []);
+    } catch (e) {
+      local = [];
+    }
+    const cloud = pinnedIdsFromValue(cloudVal);
+    const out = [];
+    const seen = new Set();
+    local.concat(cloud).forEach((id) => {
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      out.push(id);
+    });
+    return JSON.stringify(out);
+  }
+
   function isEmptyCloudSettings(obj) {
     return !obj || typeof obj !== "object" || Object.keys(obj).length === 0;
   }
@@ -156,6 +196,11 @@
       if (base === PROGRESS_KEY) {
         const localRaw = localStorage.getItem(repKey(base));
         localStorage.setItem(repKey(base), mergeProgressJson(obj[base], localRaw));
+        return;
+      }
+      if (base === "lpc_lead_pinned_v1") {
+        const localRaw = localStorage.getItem(repKey(base));
+        localStorage.setItem(repKey(base), mergePinnedJson(obj[base], localRaw));
         return;
       }
       const val =
@@ -174,6 +219,13 @@
     if (error) throw error;
     migrateLegacyLocalKeys();
     if (data?.settings_json) applySettings(data.settings_json);
+    const cloudName = String(data?.rep_name || "").trim();
+    if (cloudName && repId) {
+      const session = global.RepSession?.get?.();
+      if (!session?.name || session.name !== cloudName) {
+        global.RepSession.set({ id: repId, name: cloudName });
+      }
+    }
     try {
       global.dispatchEvent(new Event("onboarding-progress-changed"));
     } catch (e) {
@@ -232,7 +284,8 @@
   }
 
   async function init() {
-    const currentId = global.RepSession?.get?.()?.id || null;
+    const currentId =
+      global.RepSession?.getId?.() || global.RepSession?.get?.()?.id || null;
     if (initPromise && initRepId !== currentId) {
       resetForRep();
     }
@@ -245,7 +298,7 @@
 
   async function initOnce() {
     ready = false;
-    repId = global.RepSession?.get?.()?.id || null;
+    repId = global.RepSession?.getId?.() || global.RepSession?.get?.()?.id || null;
     initRepId = repId;
     global.RepSession?.enforceTrackerIdentity?.();
 

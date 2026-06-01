@@ -227,6 +227,77 @@
 
 
 
+  function initProfilePhoto(rep) {
+    const RPP = global.RepProfilePhoto;
+    if (!RPP) return;
+
+    const img = $("settings-profile-photo-img");
+    const initialsEl = $("settings-profile-photo-initials");
+    const removeBtn = $("settings-profile-photo-remove");
+    const input = $("settings-profile-photo-input");
+    const status = $("settings-profile-photo-status");
+    let uploading = false;
+
+    function renderPhoto(name) {
+      const url = RPP.displayUrl ? RPP.displayUrl() : RPP.loadUrl() || RPP.DEFAULT_URL;
+      const hasCustom = RPP.hasCustomPhoto ? RPP.hasCustomPhoto() : !!RPP.loadUrl();
+      if (img) {
+        img.src = url;
+        img.alt = (name || "Rep") + " profile photo";
+        img.hidden = false;
+      }
+      if (initialsEl) initialsEl.hidden = true;
+      if (removeBtn) removeBtn.hidden = !hasCustom;
+    }
+
+    renderPhoto(rep.name);
+
+    input?.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file || uploading) return;
+      const err = RPP.validateFile(file);
+      if (err) {
+        showStatus(status, err, false);
+        return;
+      }
+      uploading = true;
+      showStatus(status, "Uploading…", true);
+      try {
+        await RPP.upload(file, rep.id);
+        renderPhoto(($("settings-display-name")?.value || rep.name || "").trim());
+        showStatus(status, "Photo saved", true);
+        setTimeout(() => {
+          if (status?.textContent === "Photo saved") showStatus(status, "", true);
+        }, 1800);
+      } catch (e) {
+        console.error(e);
+        showStatus(status, e.message || "Could not upload photo.", false);
+      } finally {
+        uploading = false;
+      }
+    });
+
+    removeBtn?.addEventListener("click", async () => {
+      if (uploading) return;
+      uploading = true;
+      showStatus(status, "Removing…", true);
+      try {
+        await RPP.remove(rep.id);
+        renderPhoto(($("settings-display-name")?.value || rep.name || "").trim());
+        showStatus(status, "Reset to default photo", true);
+        setTimeout(() => {
+          if (status?.textContent === "Reset to default photo") showStatus(status, "", true);
+        }, 1800);
+      } catch (e) {
+        console.error(e);
+        showStatus(status, "Could not remove photo.", false);
+      } finally {
+        uploading = false;
+      }
+    });
+  }
+
   function initProfile(rep) {
 
     const nameEl = $("settings-display-name");
@@ -234,6 +305,8 @@
     const idEl = $("settings-rep-id");
 
     const status = $("settings-profile-status");
+
+    initProfilePhoto(rep);
 
     let savedName = rep.name || "";
 
@@ -289,7 +362,14 @@
 
         global.RepSession?.refreshNameDisplays?.();
 
+        window.LeadSync?.refreshTeam?.().catch(() => {});
+
         if (idEl) idEl.textContent = savedName + " (" + rep.id + ")";
+
+        const photoImg = $("settings-profile-photo-img");
+        if (photoImg && !photoImg.hidden) {
+          photoImg.alt = savedName + " profile photo";
+        }
 
         showStatus(status, "Saved", true);
 
@@ -766,11 +846,23 @@
     })();
   }
 
-  function mount() {
+  async function mount() {
 
-    const rep = global.RepSession?.get?.();
+    let rep = global.RepSession?.get?.();
+    const repIdOnly = global.RepSession?.getId?.();
 
-    if (!rep) return;
+    if (!rep?.id && !repIdOnly) return;
+
+    if ((!rep?.name || !rep) && global.RepIdentity?.resolveRepIdentity) {
+      await global.RepIdentity.resolveRepIdentity();
+      rep = global.RepSession?.get?.();
+    }
+
+    if (!rep?.id && repIdOnly) {
+      rep = { id: repIdOnly, name: repIdOnly };
+    }
+
+    if (!rep?.id) return;
 
 
 
@@ -795,17 +887,17 @@
 
 
   function start() {
-
-    if (global.RepStorage?.whenReady) {
-
-      global.RepStorage.whenReady(mount);
-
-    } else {
-
-      mount();
-
-    }
-
+    const run = () => {
+      if (global.RepStorage?.whenReady) {
+        global.RepStorage.whenReady(() => {
+          void mount();
+        });
+      } else {
+        void mount();
+      }
+    };
+    if (global.SiteLock?.whenUnlocked) global.SiteLock.whenUnlocked(run);
+    else run();
   }
 
 

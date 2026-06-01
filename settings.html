@@ -19,6 +19,21 @@
         <h2 class="settings-card-title" data-icon="user-plus">Profile</h2>
         <p class="settings-hint muted">Signed in as <strong id="settings-rep-id">—</strong></p>
 
+        <div class="settings-profile-photo">
+          <div class="settings-profile-photo-preview" id="settings-profile-photo-preview">
+            <img class="settings-profile-photo-img" id="settings-profile-photo-img" alt="" width="88" height="88" decoding="async" hidden>
+            <span class="settings-profile-photo-initials" id="settings-profile-photo-initials" aria-hidden="true">?</span>
+          </div>
+          <div class="settings-profile-photo-actions">
+            <label class="btn secondary settings-profile-photo-upload">
+              Upload photo
+              <input type="file" id="settings-profile-photo-input" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+            </label>
+            <button type="button" class="btn secondary" id="settings-profile-photo-remove" hidden>Reset to default</button>
+          </div>
+        <p id="settings-profile-photo-status" class="settings-status settings-status-inline" hidden></p>
+        </div>
+
         <label class="field">
           <span class="field-label">Display name</span>
           <input type="text" id="settings-display-name" maxlength="40" autocomplete="name" placeholder="Your name">
@@ -160,6 +175,8 @@
   <script src="js/course-modules.js"></script>
   <script src="js/app.js"></script>
   <script src="js/payout-setup.js"></script>
+  <script src="js/rep-profile-photo.js"></script>
+  <script src="js/rep-identity.js"></script>
   <script src="js/settings.js"></script>
 </body>
 </html>

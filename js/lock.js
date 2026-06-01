@@ -20,9 +20,9 @@
 
   function isAuthenticated() {
     if (isPublicPage()) return false;
-    return (
-      sessionStorage.getItem(STORAGE_KEY) === "1" && !!window.RepSession?.get?.()
-    );
+    const repId =
+      window.RepSession?.getId?.() || window.RepSession?.get?.()?.id;
+    return sessionStorage.getItem(STORAGE_KEY) === "1" && !!repId;
   }
 
   function shouldShowLock() {
@@ -362,6 +362,14 @@
       lockoutTimer = null;
     }
 
+    if (window.RepIdentity?.refreshUI) {
+      try {
+        await window.RepIdentity.refreshUI();
+      } catch (e) {
+        console.warn("Rep identity refresh failed", e);
+      }
+    }
+
     window.dispatchEvent(new Event("site-unlocked"));
   }
 
@@ -440,8 +448,9 @@
 
     initRepAuth();
 
-    const rep = window.RepSession?.get?.();
-    if (rep) {
+    const repId =
+      window.RepSession?.getId?.() || window.RepSession?.get?.()?.id;
+    if (repId) {
       sessionStorage.setItem(STORAGE_KEY, "1");
     } else {
       sessionStorage.removeItem(STORAGE_KEY);

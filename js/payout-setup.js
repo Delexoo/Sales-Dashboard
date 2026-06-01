@@ -629,6 +629,8 @@
   function unmarkPayoutChecklist() {
     saveChecklistProgress((p) => {
       delete p.payout;
+      delete p.module_setup_accounts;
+      delete p.module_setup;
     });
   }
 

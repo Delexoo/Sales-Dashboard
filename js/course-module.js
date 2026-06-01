@@ -48,8 +48,12 @@
     { label: "Platform Tour", href: "course-module.html?m=dashboard", phrase: true },
     { label: "Lead Finder", href: "leads.html", phrase: true },
     { label: "Lead Builder", href: "template.html", phrase: true },
+    { label: "Call Scripts", href: "scripts.html", phrase: true },
     { label: "Call scripts", href: "scripts.html", phrase: true },
+    { label: "Text & Email", href: "outreach.html", phrase: true },
     { label: "Text & email", href: "outreach.html", phrase: true },
+    { label: "Contributors", href: "contributors.html", phrase: true },
+    { label: "Setup Checklist", href: "checklist.html", phrase: true },
     { label: "Bug Bounty", href: "bug-bounty.html", phrase: true },
     { label: "All links", href: "resources.html", phrase: true },
     { label: "Dashboard", href: "dashboard.html" },
@@ -233,7 +237,7 @@
       '<div class="course-side-panel course-side-panel--survey course-side-panel--everyday" id="course-side-panel">' +
       '<div class="course-everyday-embed">' +
       '<p class="course-everyday-embed-title">Your daily loop</p>' +
-      '<p class="course-everyday-embed-lead muted">Six steps — top to bottom each workday. Hover a step for details.</p>' +
+      '<p class="course-everyday-embed-lead muted">Six steps — top to bottom each workday.</p>' +
       '<div class="everyday-tasks-table-wrap course-everyday-table-wrap">' +
       '<table class="everyday-tasks-table course-everyday-table">' +
       "<thead><tr><th scope=\"col\">#</th><th scope=\"col\">Do this</th><th scope=\"col\"></th></tr></thead>" +
@@ -483,7 +487,13 @@
       const go = () => {
         if (href) window.location.assign(href);
       };
-      Promise.resolve(global.LpcOnboarding?.markCourseModuleComplete?.(mod))
+      const progress = global.LpcOnboarding?.loadProgress?.() || {};
+      const canMark =
+        !mod.progressKeys?.length || global.CourseModules?.isComplete?.(mod, progress);
+      const mark = canMark
+        ? global.LpcOnboarding?.markCourseModuleComplete?.(mod)
+        : Promise.resolve();
+      Promise.resolve(mark)
         .then(go)
         .catch((err) => {
           console.warn("Could not save course progress before next module", err);

@@ -11,7 +11,7 @@
     overview: ["home"],
     course: ["course-module", "setup"],
     tools: ["leads", "scripts", "template", "outreach", "checklist"],
-    help: ["faq", "feedback", "bug-bounty", "settings", "resources", "owner", "privacy", "terms"],
+    help: ["faq", "feedback", "bug-bounty", "settings", "resources", "owner", "contributors", "privacy", "terms"],
   };
 
   const COMMISSION_RATE = 0.4;
@@ -127,7 +127,20 @@
     checklist: "checklist",
   };
 
+  const CHECKLIST_MODULE_MAP = {
+    module_introduction: "introduction",
+    module_business: "business",
+    module_setup_accounts: "setup-accounts",
+    module_dashboard: "dashboard",
+    module_everyday_tasks: "everyday-tasks",
+  };
+
   function isChecklistItemDone(id, progress) {
+    const modId = CHECKLIST_MODULE_MAP[id];
+    if (modId && window.CourseModules?.get) {
+      const mod = window.CourseModules.get(modId);
+      if (mod) return window.CourseModules.isComplete(mod, progress);
+    }
     if (progress[id]) return true;
     if (id === "template" && progress["first-lead"]) return true;
     return false;
@@ -161,7 +174,14 @@
 
   function loadProgress() {
     try {
-      return JSON.parse(lsGet(PROGRESS_KEY) || "{}");
+      const raw = JSON.parse(lsGet(PROGRESS_KEY) || "{}");
+      const CM = window.CourseModules;
+      if (!CM?.reconcileProgress) return raw;
+      const next = CM.reconcileProgress(raw);
+      if (JSON.stringify(next) !== JSON.stringify(raw)) {
+        lsSet(PROGRESS_KEY, JSON.stringify(next));
+      }
+      return next;
     } catch (e) {
       return {};
     }
@@ -183,12 +203,15 @@
       if (location.href.includes(landing)) return;
     }
 
+    const entryPages = new Set(["index.html", "course.html", ""]);
+    const isEntry = entryPages.has(page);
+
     if (CM.allComplete(progress)) {
-      if (page !== "dashboard.html") location.replace(landing);
+      if (isEntry) location.replace(landing);
       return;
     }
 
-    if (page === "index.html" || page === "course.html") {
+    if (isEntry) {
       location.replace(landing);
     }
   }
@@ -551,6 +574,7 @@
           "help",
           "Help",
           `<li><a class="${activeId === "owner" ? "nav-link active" : "nav-link"}" href="owner.html"><span class="nav-link-text">${ico("message-square", "ico-nav")}Meet the Owner</span></a></li>` +
+            `<li><a class="${activeId === "contributors" ? "nav-link active" : "nav-link"}" href="contributors.html"><span class="nav-link-text">${ico("users", "ico-nav")}Contributors</span></a></li>` +
             `<li><a class="${activeId === "settings" ? "nav-link active" : "nav-link"}" href="settings.html"><span class="nav-link-text">${ico("settings", "ico-nav")}Settings</span></a></li>` +
             `<li><a class="${activeId === "faq" ? "nav-link active" : "nav-link"}" href="faq.html"><span class="nav-link-text">${ico("help-circle", "ico-nav")}FAQ</span></a></li>` +
             `<li><a class="${resourcesActive ? "nav-link active" : "nav-link"}" href="resources.html"><span class="nav-link-text">${ico("external-link", "ico-nav")}All links</span></a></li>` +
@@ -650,41 +674,43 @@
     },
     {
       step: 2,
-      task: "Pick a business",
-      detail: "Choose one business from the list and open its card when you are ready to work that lead.",
+      taskFlow: ["Pick a business", "Build Lead"],
+      detail:
+        "Choose one business from the list, then click Build Lead on its card to send details into Lead Builder (the lead is pinned for you).",
+      buildLeadTag: true,
     },
     {
       step: 3,
-      task: "Call & pitch the website",
+      taskFlow: ["Call business", "Pitch website"],
       detail:
         "Dial from the card and use Call scripts to offer the free demo site. Talk to the owner or decision-maker. Not interested? Thank them and go back to step 2 — do not post the lead.",
       resource: { href: "scripts.html", label: "Call scripts" },
     },
     {
       step: 4,
-      task: "If they're interested, fill out the Lead Builder",
+      taskFlow: ["If interested", "Lead Builder"],
       detailBullets: [
-        "Open Lead Builder — price must match what you quoted on the call",
-        "Price tier: $700, $1,000, or $1,500",
-        "Google Maps link: already in our leads list",
+        "Price must match what you quoted on the call",
+        "Google Maps link is filled from Build Lead",
         "Preference: Direct Link or Booking",
-        "Phone: +1 US number",
-        "Owner name",
-        "Click Copy template when the message is complete",
-        "Then: paste the full Lead Builder message into Interested Businesses on Telegram right away.",
+        "Phone and owner name",
       ],
-      resource: { href: "template.html", label: "Lead Builder" },
+      resource: { href: "template.html", label: "Lead Builder", shortLabel: "Builder" },
     },
     {
       step: 5,
-      task: "Send the template to us",
+      taskFlow: ["Copy template", "Interested Businesses"],
       detail:
-        "Paste the full Lead Builder message into Interested Businesses on Telegram right away.",
-      resource: { hrefKey: "interestedBusinessesUrl", label: "Interested Businesses", external: true },
+        "In Lead Builder, click Copy template, then paste the full message into Interested Businesses on Telegram right away.",
+      resource: {
+        hrefKey: "interestedBusinessesUrl",
+        label: "Interested Businesses",
+        external: true,
+      },
     },
     {
       step: 6,
-      task: "Mark the business as complete",
+      task: "Mark complete",
       detail:
         "In Lead Finder, tag the business Complete (team sees it). Use Pending if you need to call back. Quick Save and Pin are only for you. Then start again at step 2.",
       completeTag: true,
@@ -699,8 +725,17 @@
     );
   }
 
+  function everydayTaskBuildLeadTag() {
+    return (
+      '<span class="lf-action-btn lf-action-builder everyday-tasks-builder-tag" title="Build Lead button on each lead card in Lead Finder">' +
+      '<span data-icon="hammer" data-icon-class="lf-action-ico everyday-tasks-builder-tag-ico" aria-hidden="true"></span>' +
+      '<span class="everyday-tasks-builder-tag-text">Build Lead</span></span>'
+    );
+  }
+
   function everydayTaskToolCell(row) {
     if (row.completeTag) return everydayTaskCompleteTag();
+    if (row.buildLeadTag) return everydayTaskBuildLeadTag();
     return everydayTaskOpenButton(row.resource);
   }
 
@@ -719,39 +754,47 @@
     return "";
   }
 
-  function everydayTaskHasTip(row) {
-    return !!(row.detail || (Array.isArray(row.detailBullets) && row.detailBullets.length));
+  function everydayTaskFlowArrow() {
+    return '<span class="everyday-tasks-flow-arrow" aria-hidden="true">→</span>';
   }
 
-  function everydayTaskTooltipHtml(row) {
-    if (Array.isArray(row.detailBullets) && row.detailBullets.length) {
-      return (
-        `<ul class="everyday-tasks-tooltip-list">` +
-        row.detailBullets.map((item) => `<li>${escHtml(item)}</li>`).join("") +
-        `</ul>`
-      );
+  function everydayTaskLabelHtml(row) {
+    if (Array.isArray(row.taskFlow) && row.taskFlow.length) {
+      const inner = row.taskFlow
+        .map((part, i) => {
+          const text = `<span class="everyday-tasks-task-part">${escHtml(part)}</span>`;
+          return i === 0 ? text : everydayTaskFlowArrow() + text;
+        })
+        .join("");
+      return `<span class="everyday-tasks-flow">${inner}</span>`;
     }
-    return row.detail ? escHtml(row.detail) : "";
+    if (row.taskHeading) {
+      let html = `<span class="everyday-tasks-heading">${escHtml(row.taskHeading)}</span>`;
+      if (Array.isArray(row.inlineBullets) && row.inlineBullets.length) {
+        html +=
+          '<ul class="everyday-tasks-inline-list">' +
+          row.inlineBullets.map((item) => `<li>${escHtml(item)}</li>`).join("") +
+          "</ul>";
+      }
+      return html;
+    }
+    return `<strong class="everyday-tasks-task">${escHtml(row.task || "")}</strong>`;
   }
 
   function renderEverydayTasksInto(tbody) {
     if (!tbody) return;
     tbody.innerHTML = EVERYDAY_TASKS.map((row) => {
-      const tipId = `everyday-tip-${row.step}`;
-      const whatCell = everydayTaskHasTip(row)
-        ? `<span class="everyday-tasks-tip" tabindex="0" aria-describedby="${tipId}"><strong class="everyday-tasks-task">${escHtml(row.task)}</strong></span>` +
-          `<span class="everyday-tasks-tooltip" role="tooltip" id="${tipId}">${everydayTaskTooltipHtml(row)}</span>`
-        : `<strong class="everyday-tasks-task">${escHtml(row.task)}</strong>`;
+      const label = everydayTaskLabelHtml(row);
       return (
         `<tr class="everyday-tasks-row">` +
         `<td class="everyday-tasks-step"><span class="everyday-tasks-step-num">${row.step}</span></td>` +
-        `<td class="everyday-tasks-what">${whatCell}</td>` +
+        `<td class="everyday-tasks-what">${label}</td>` +
         `<td class="everyday-tasks-open">${everydayTaskToolCell(row)}</td>` +
         `</tr>`
       );
     }).join("");
     initConfigLinks();
-    bindEverydayTaskTooltips(tbody);
+    if (window.SiteIcons) window.SiteIcons.initIcons(tbody);
   }
 
   function initEverydayTasks() {
@@ -759,80 +802,6 @@
   }
 
   window.EverydayTasks = { renderInto: renderEverydayTasksInto };
-
-  function bindEverydayTaskTooltips(tbody) {
-    if (!tbody || tbody.dataset.tipsBound === "1") return;
-    tbody.dataset.tipsBound = "1";
-
-    let openTipTrigger = null;
-
-    function placeTooltip(tip, anchor) {
-      const margin = 12;
-      const gap = 8;
-      const ar = anchor.getBoundingClientRect();
-      tip.classList.add("is-placed");
-      tip.style.position = "fixed";
-      tip.style.zIndex = "10000";
-      tip.style.maxWidth = Math.min(340, window.innerWidth - margin * 2) + "px";
-      tip.style.left = ar.left + "px";
-      tip.style.top = ar.bottom + gap + "px";
-
-      tip.classList.add("is-measuring");
-      const tr = tip.getBoundingClientRect();
-      let left = ar.left;
-      if (tr.right > window.innerWidth - margin) {
-        left = Math.max(margin, window.innerWidth - margin - tr.width);
-        tip.style.left = left + "px";
-      }
-      if (tr.bottom > window.innerHeight - margin) {
-        tip.style.top = Math.max(margin, ar.top - tr.height - gap) + "px";
-      }
-      tip.classList.remove("is-measuring");
-    }
-
-    function getTipForTrigger(trigger) {
-      const tip = trigger.nextElementSibling;
-      return tip?.classList?.contains("everyday-tasks-tooltip") ? tip : null;
-    }
-
-    function showTip(trigger) {
-      const tip = getTipForTrigger(trigger);
-      if (!tip) return;
-      if (openTipTrigger && openTipTrigger !== trigger) hideTip(openTipTrigger);
-      placeTooltip(tip, trigger);
-      trigger.classList.add("is-tip-open");
-      openTipTrigger = trigger;
-    }
-
-    function hideTip(trigger) {
-      const tip = getTipForTrigger(trigger);
-      trigger.classList.remove("is-tip-open");
-      if (!tip) return;
-      tip.classList.remove("is-placed", "is-measuring");
-      tip.style.position = "";
-      tip.style.left = "";
-      tip.style.top = "";
-      tip.style.zIndex = "";
-      tip.style.maxWidth = "";
-      if (openTipTrigger === trigger) openTipTrigger = null;
-    }
-
-    tbody.querySelectorAll(".everyday-tasks-tip").forEach((trigger) => {
-      trigger.addEventListener("mouseenter", () => showTip(trigger));
-      trigger.addEventListener("mouseleave", () => hideTip(trigger));
-      trigger.addEventListener("focus", () => showTip(trigger));
-      trigger.addEventListener("blur", () => hideTip(trigger));
-    });
-
-    const repositionOpenTips = () => {
-      tbody.querySelectorAll(".everyday-tasks-tip.is-tip-open").forEach((trigger) => {
-        const tip = getTipForTrigger(trigger);
-        if (tip) placeTooltip(tip, trigger);
-      });
-    };
-    window.addEventListener("scroll", repositionOpenTips, true);
-    window.addEventListener("resize", repositionOpenTips);
-  }
 
   const CHECKLIST_GROUPS = [
     {
@@ -962,6 +931,7 @@
   window.LpcOnboarding = {
     markCourseModuleComplete: markCourseModuleChecklist,
     touchProgressKeys,
+    loadProgress,
   };
 
   function initOnboardingChecklist() {
@@ -1587,9 +1557,20 @@
       scriptsPage.dataset.dlBound = "1";
       scriptsPage.addEventListener("click", (e) => {
         const dl = e.target.closest(".script-dl-btn");
-        if (!dl) return;
-        const acc = dl.closest(".acc");
-        if (acc) downloadScriptFromAcc(acc, dl.dataset.format || "txt");
+        if (dl) {
+          const acc = dl.closest(".acc");
+          if (acc) downloadScriptFromAcc(acc, dl.dataset.format || "txt");
+          return;
+        }
+        const jump = e.target.closest(".script-open-btn");
+        if (!jump) return;
+        const scriptId = jump.dataset.scriptId;
+        if (!scriptId) return;
+        const acc = document.querySelector('#scripts-editor .acc[data-script-id="' + scriptId + '"]');
+        if (!acc) return;
+        document.querySelectorAll("#scripts-editor .acc.open").forEach((a) => a.classList.remove("open"));
+        acc.classList.add("open");
+        acc.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
 
@@ -1886,6 +1867,7 @@
     if (nameEl && s.name) nameEl.value = s.name;
     if (phoneEl && s.phone) phoneEl.value = s.phone;
     if (mapsEl && s.maps) mapsEl.value = s.maps;
+    syncTplCallBtn();
   }
 
   function setTplMode(mode, skipSave) {
@@ -1904,17 +1886,10 @@
   }
 
   function formatPhoneForCopy(raw) {
+    const formatted = global.LeadDisplay?.formatPhoneForLeadBuilder?.(raw);
+    if (formatted) return formatted;
     const t = String(raw || "").trim();
-    if (!t) return "[Phone Number]";
-    if (/\(\d{3}\)/.test(t)) return t;
-    let d = String(raw).replace(/\D/g, "");
-    if (!d) return t;
-    if (d[0] !== "1") d = "1" + d;
-    d = d.slice(0, 11);
-    const n = d.slice(1);
-    if (n.length <= 3) return "+1(" + n;
-    if (n.length <= 6) return "+1(" + n.slice(0, 3) + ")" + n.slice(3);
-    return "+1(" + n.slice(0, 3) + ")" + n.slice(3, 6) + "-" + n.slice(6);
+    return t || "[Phone Number]";
   }
 
   function copyTpl(btn) {
@@ -1963,12 +1938,54 @@
     setTplPrice("$500");
     setTplMode("dl");
     persistTemplateBuilder();
+    syncTplCallBtn();
+  }
+
+  function telHrefFromTplPhone(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return "";
+    let d = t.replace(/\D/g, "");
+    if (d.length === 10) return "tel:+1" + d;
+    if (d.length === 11 && d[0] === "1") return "tel:+" + d;
+    if (d.length > 11) return "tel:+" + d;
+    return "";
+  }
+
+  function syncTplCallBtn() {
+    const btn = document.getElementById("tpl-call-btn");
+    const phone = document.getElementById("tpl-phone")?.value || "";
+    if (!btn) return;
+    const href = telHrefFromTplPhone(phone);
+    if (href) {
+      btn.href = href;
+      btn.removeAttribute("aria-disabled");
+      btn.classList.remove("is-disabled");
+    } else {
+      btn.href = "#";
+      btn.setAttribute("aria-disabled", "true");
+      btn.classList.add("is-disabled");
+    }
   }
 
   function bindTemplateBuilderAutosave() {
     ["tpl-name", "tpl-phone", "tpl-maps"].forEach((id) => {
       document.getElementById(id)?.addEventListener("input", persistTemplateBuilder);
     });
+    const phoneEl = document.getElementById("tpl-phone");
+    const callBtn = document.getElementById("tpl-call-btn");
+    if (phoneEl && !phoneEl.dataset.callSyncBound) {
+      phoneEl.dataset.callSyncBound = "1";
+      phoneEl.addEventListener("input", syncTplCallBtn);
+    }
+    if (callBtn && !callBtn.dataset.bound) {
+      callBtn.dataset.bound = "1";
+      callBtn.addEventListener("click", (e) => {
+        if (callBtn.classList.contains("is-disabled")) {
+          e.preventDefault();
+        }
+      });
+    }
+    syncTplCallBtn();
   }
 
   function closeTplInfoPanels() {
@@ -2093,9 +2110,13 @@
     const mapsVal = pick.mapsUrl || pick.maps || "";
     const phoneEl = document.getElementById("tpl-phone");
     const mapsEl = document.getElementById("tpl-maps");
-    if (phoneEl && pick.phone) phoneEl.value = pick.phone;
+    if (phoneEl && pick.phone) {
+      phoneEl.value =
+        global.LeadDisplay?.formatPhoneForLeadBuilder?.(pick.phone) || pick.phone;
+    }
     if (mapsEl && mapsVal) mapsEl.value = mapsVal;
     persistTemplateBuilder();
+    syncTplCallBtn();
   }
 
   function mergeLeadPickIntoStorage(pick) {
@@ -2111,6 +2132,10 @@
   }
 
   function forwardLeadToBuilder(lead) {
+    const leadId = lead?.id;
+    if (leadId && window.LeadsPage?.pinLeadForBuilder) {
+      void window.LeadsPage.pinLeadForBuilder(leadId);
+    }
     const pick = buildLeadPickFromLead(lead);
     try {
       sessionStorage.setItem("lpc_lead_pick_v1", JSON.stringify(pick));
@@ -2133,6 +2158,35 @@
       sessionStorage.removeItem("lpc_lead_pick_v1");
       applyLeadPick(JSON.parse(raw));
     } catch (e) {}
+  }
+
+  let tplAutosaveAnimTimer = null;
+
+  function initTplAutosaveTag() {
+    const tag = document.getElementById("tpl-autosave-tag");
+    const label = document.getElementById("tpl-autosave-label");
+    const check = tag?.querySelector(".tpl-autosave-check");
+    if (!tag || !label || !check) return;
+
+    if (tplAutosaveAnimTimer) clearTimeout(tplAutosaveAnimTimer);
+
+    tag.classList.add("is-loading");
+    label.textContent = "Saving…";
+    check.hidden = true;
+
+    const delay = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 0
+      : 1000;
+
+    const finish = () => {
+      tag.classList.remove("is-loading");
+      label.textContent = "Auto saved!";
+      check.hidden = false;
+      if (window.SiteIcons) window.SiteIcons.initIcons(tag);
+    };
+
+    if (delay === 0) finish();
+    else tplAutosaveAnimTimer = setTimeout(finish, delay);
   }
 
   window.forwardLeadToBuilder = forwardLeadToBuilder;
@@ -2400,6 +2454,7 @@
     initOnboardingChecklist();
     renderOnboardingPath();
     initSalesTracker();
+    global.DashboardPending?.init?.();
     renderStepFooter();
     initAccordions();
     initCallScripts();
@@ -2416,6 +2471,7 @@
       initTplInfo();
       bindTemplateBuilderAutosave();
       initLeadPickFromFinder();
+      initTplAutosaveTag();
     }
   }
 

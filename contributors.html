@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contributors · Sales Team Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/site.css">
+  <script src="js/config.js"></script>
+  <script src="js/image-preload.js"></script>
+</head>
+<body data-page="contributors">
+  <div id="shell"></div>
+  <div id="page-body" class="contributors-page">
+    <header class="contributors-page-header">
+      <p class="page-label" data-icon="users">Help</p>
+      <h1>Contributors</h1>
+      <p class="contributors-page-lead">The sales reps building this team — hover a profile for sales and activity stats.</p>
+    </header>
+
+    <section class="card contributors-card" aria-label="Team contributors">
+      <ul class="owner-contributors-grid" id="contributors-grid" role="list"></ul>
+      <section class="contributors-team-stats" id="contributors-team-stats" aria-label="Team status" hidden>
+        <h2 class="contributors-team-stats-title">Team status</h2>
+        <dl class="contributors-team-stats-grid" id="contributors-team-stats-grid"></dl>
+      </section>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/rep-session.js"></script>
+  <script src="js/rep-settings-sync.js"></script>
+  <script src="js/user-prefs.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/lock.js"></script>
+  <script src="js/layout-fix.js"></script>
+  <script src="js/course-modules.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/rep-profile-photo.js"></script>
+  <script src="js/owner-contributors.js"></script>
+</body>
+</html>

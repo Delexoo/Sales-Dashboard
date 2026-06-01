@@ -43,15 +43,12 @@
 
     const form = root.querySelector("#feedback-form");
     const statusEl = root.querySelector("#feedback-status");
-    const repNameEl = root.querySelector("#feedback-rep-name");
     const topicEl = root.querySelector("#feedback-topic");
     const messageEl = root.querySelector("#feedback-message");
 
-    function setRepLabel() {
-      const r = rep();
-      if (repNameEl) repNameEl.textContent = r?.name || "—";
+    if (global.RepIdentity?.whenIdentityReady) {
+      global.RepIdentity.whenIdentityReady(() => {});
     }
-    setRepLabel();
 
     if (!canSubmit()) {
       showStatus(
@@ -76,15 +73,19 @@
 
     form?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const rNow = rep();
-      if (!rNow) {
+      let rNow = rep();
+      if (!rNow?.id && global.RepIdentity?.resolveRepIdentity) {
+        await global.RepIdentity.resolveRepIdentity();
+        rNow = rep();
+      }
+      if (!rNow?.id) {
         showStatus(statusEl, "Sign in with your PIN before sending.", "err");
         return;
       }
 
       const payload = readPayload();
       payload.rep_id = rNow.id;
-      payload.rep_name = rNow.name;
+      payload.rep_name = rNow.name || rNow.id;
 
       if (!payload.message) {
         showStatus(statusEl, "Write a message before sending.", "warn");
@@ -111,7 +112,6 @@
         if (error) throw error;
 
         form.reset();
-        setRepLabel();
         showStatus(statusEl, "Sent — thanks!", "ok");
       } catch (err) {
         console.warn(err);

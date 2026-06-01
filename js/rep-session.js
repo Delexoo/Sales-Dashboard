@@ -6,39 +6,151 @@
   const TRACKER_KEY = "lpc_sales_tracker_v2";
   const SESSION_META_KEY = "lpc_rep_session_meta_v1";
 
-  function get() {
+  function readRaw() {
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const o = JSON.parse(raw);
-      if (!o?.id || !o?.name) return null;
-      return { id: String(o.id), name: String(o.name) };
+      if (!o?.id) return null;
+      return o;
     } catch (e) {
       return null;
     }
   }
 
-  function touchSessionMeta() {
+  function getId() {
+    const o = readRaw();
+    return o?.id ? String(o.id) : null;
+  }
+
+  function get() {
+    const o = readRaw();
+    if (!o?.id) return null;
+    return { id: String(o.id), name: String(o.name || "").trim() };
+  }
+
+  function readSessionMeta() {
     try {
       const raw = global.RepStorage?.loadItem
         ? global.RepStorage.loadItem(SESSION_META_KEY)
         : null;
-      const meta = raw ? JSON.parse(raw) : {};
-      const now = new Date().toISOString();
-      if (!meta.firstLoginAt) meta.firstLoginAt = now;
-      meta.lastLoginAt = now;
-      meta.loginCount = (Number(meta.loginCount) || 0) + 1;
-      const json = JSON.stringify(meta);
+      return raw && typeof raw === "string" ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function writeSessionMeta(meta) {
+    try {
+      const json = JSON.stringify(meta || {});
       if (global.RepStorage?.saveItem) global.RepStorage.saveItem(SESSION_META_KEY, json);
     } catch (e) {
       /* ignore */
     }
   }
 
+  function touchSessionMeta() {
+    try {
+      const meta = readSessionMeta();
+      const now = new Date().toISOString();
+      if (!meta.firstLoginAt) meta.firstLoginAt = now;
+      meta.lastLoginAt = now;
+      meta.lastOnlineAt = now;
+      meta.loginCount = (Number(meta.loginCount) || 0) + 1;
+      if (meta.activeMs == null) meta.activeMs = 0;
+      if (!meta.activeSince) meta.activeSince = now;
+      writeSessionMeta(meta);
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function flushActiveMs(meta, nowMs) {
+    const now = nowMs || Date.now();
+    const since = meta.activeSince ? new Date(meta.activeSince).getTime() : NaN;
+    if (!Number.isNaN(since)) {
+      meta.activeMs = (Number(meta.activeMs) || 0) + Math.max(0, now - since);
+    }
+    meta.activeSince = new Date(now).toISOString();
+  }
+
+  function pauseActiveMs() {
+    if (!get()) return;
+    try {
+      const meta = readSessionMeta();
+      const now = Date.now();
+      const since = meta.activeSince ? new Date(meta.activeSince).getTime() : NaN;
+      if (!Number.isNaN(since)) {
+        meta.activeMs = (Number(meta.activeMs) || 0) + Math.max(0, now - since);
+      }
+      delete meta.activeSince;
+      meta.lastOnlineAt = new Date(now).toISOString();
+      writeSessionMeta(meta);
+      global.RepStorage?.scheduleSync?.();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function touchOnline() {
+    if (!get()) return;
+    try {
+      const meta = readSessionMeta();
+      flushActiveMs(meta);
+      meta.lastOnlineAt = meta.activeSince;
+      writeSessionMeta(meta);
+      global.RepStorage?.scheduleSync?.();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  let onlineHeartbeatStarted = false;
+
+  function startOnlineHeartbeat() {
+    if (onlineHeartbeatStarted || !get()) return;
+    onlineHeartbeatStarted = true;
+    touchOnline();
+    setInterval(touchOnline, 3 * 60 * 1000);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        try {
+          const meta = readSessionMeta();
+          meta.activeSince = new Date().toISOString();
+          writeSessionMeta(meta);
+        } catch (e) {
+          /* ignore */
+        }
+        touchOnline();
+      } else {
+        pauseActiveMs();
+      }
+    });
+    window.addEventListener("beforeunload", () => {
+      pauseActiveMs();
+    });
+  }
+
   function set(rep) {
-    if (!rep?.id || !rep?.name) return;
-    const prev = get();
-    const next = { id: String(rep.id), name: String(rep.name).trim() };
+    if (!rep?.id) return;
+    const prev = readRaw();
+    const name =
+      rep.name != null && String(rep.name).trim() !== ""
+        ? String(rep.name).trim()
+        : String(prev?.name || "").trim();
+    if (!name) {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ id: String(rep.id), name: "" })
+      );
+      global.dispatchEvent(
+        new CustomEvent("rep-session-changed", {
+          detail: { id: String(rep.id), name: "" },
+        })
+      );
+      return;
+    }
+    const next = { id: String(rep.id), name };
     sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     applyToTracker(true);
     refreshNameDisplays();
@@ -64,12 +176,23 @@
   }
 
   function refreshNameDisplays() {
+    if (global.RepIdentity?.refreshUI) {
+      void global.RepIdentity.refreshUI();
+      return;
+    }
     const name = getName();
-    if (!name) return;
-    ["bug-report-rep-name", "feedback-rep-name"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = name;
+    const id = getId();
+    if (!name && !id) return;
+    const label = name || id || "—";
+    ["bug-report-rep-name", "feedback-rep-name", "faq-qa-ask-rep"].forEach((elId) => {
+      const el = document.getElementById(elId);
+      if (el) el.textContent = label;
     });
+    const settingsEl = document.getElementById("settings-rep-id");
+    if (settingsEl) {
+      if (name && id) settingsEl.textContent = name + " (" + id + ")";
+      else settingsEl.textContent = label;
+    }
   }
 
   function loadTrackerRaw() {
@@ -131,6 +254,7 @@
 
   global.RepSession = {
     get,
+    getId,
     set,
     clear,
     signOut,
@@ -139,6 +263,19 @@
     applyToTracker,
     enforceTrackerIdentity,
     touchSessionMeta,
+    touchOnline,
+    startOnlineHeartbeat,
+    SESSION_META_KEY,
     STORAGE_KEY,
   };
+
+  global.addEventListener("site-unlocked", () => {
+    startOnlineHeartbeat();
+  });
+  if (
+    get() &&
+    sessionStorage.getItem("lpc_site_unlock") === "1"
+  ) {
+    startOnlineHeartbeat();
+  }
 })(window);

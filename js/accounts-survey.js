@@ -818,6 +818,16 @@
     });
   }
 
+  function syncSetupAccountsModuleProgress() {
+    const CM = global.CourseModules;
+    const mod = CM?.get?.("setup-accounts");
+    if (!mod) return;
+    const p = getOnboardingProgress();
+    if (!CM.isComplete(mod, p)) return;
+    const next = CM.markComplete(mod, p);
+    saveOnboardingProgress(next);
+  }
+
   function restartSurvey() {
     needsTelegramInstall = false;
     needsTelegramStuckHelp = false;
@@ -827,6 +837,9 @@
     try {
       const p = getOnboardingProgress();
       delete p.surveyComplete;
+      delete p.telegram;
+      delete p.module_setup_accounts;
+      delete p.module_setup;
       saveOnboardingProgress(p);
     } catch (e) {
       /* ignore */
@@ -952,6 +965,7 @@
     if (step.id === "telegram-join") {
       stage.querySelectorAll("[data-join-advance]").forEach((btn) => {
         btn.addEventListener("click", () => {
+          markProgress("telegram");
           goTo(currentStep + 1);
         });
       });
@@ -1041,6 +1055,7 @@
     renderStep();
     if (STEPS[currentStep]?.id === "done") {
       markSurveyComplete();
+      syncSetupAccountsModuleProgress();
       document.getElementById("accounts-survey")?.classList.add("accounts-survey--complete");
     }
   }
@@ -1111,6 +1126,7 @@
       syncSavedPayoutFromList(await global.PayoutSetup.fetchAllMine());
 
       markProgress("payout");
+      syncSetupAccountsModuleProgress();
 
       showPayoutStatus("", "");
 

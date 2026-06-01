@@ -11,7 +11,16 @@
   <div id="shell"></div>
   <div id="page-body">
     <p class="page-label" data-icon="file-plus">Daily tools</p>
-    <h1>Lead Builder</h1>
+    <div class="tpl-page-head">
+      <h1>Lead Builder</h1>
+      <p class="tpl-autosave-tag is-loading" id="tpl-autosave-tag" aria-live="polite">
+        <span class="tpl-autosave-tag-ico" id="tpl-autosave-ico" aria-hidden="true">
+          <span class="tpl-autosave-spinner"></span>
+          <span class="tpl-autosave-check" data-icon="check" data-icon-class="tpl-autosave-check-ico" hidden></span>
+        </span>
+        <span id="tpl-autosave-label">Saving…</span>
+      </p>
+    </div>
     <p class="lead" style="margin-bottom:16px">Use the Lead Builder during a call. The form formats your lead for you — click <strong>Copy template</strong>, then paste into <a class="link-bold-blue" data-config="interestedBusinessesUrl" href="#" target="_blank" rel="noopener">Interested Businesses</a> on Telegram.</p>
 
     <div class="tpl-box" id="tpl-builder">
@@ -73,15 +82,19 @@
       <div class="tpl-row">
         <span class="tpl-label">Phone:</span>
         <div class="tpl-row-body">
-          <div class="tpl-row-fields">
+          <div class="tpl-row-fields tpl-row-fields--phone">
             <input class="tpl-input" id="tpl-phone" type="tel" inputmode="tel" placeholder="4013000957 or +14013000957">
+            <a class="tpl-call-btn is-disabled" id="tpl-call-btn" href="#" aria-disabled="true">
+              <span data-icon="phone" data-icon-class="tpl-call-ico" aria-hidden="true"></span>
+              Call
+            </a>
           </div>
           <div class="tpl-info-wrap">
             <button type="button" class="tpl-info-btn" aria-label="How to: Phone" aria-expanded="false" aria-controls="tpl-info-phone" data-tpl-info-toggle>
               <span data-icon="info" aria-hidden="true"></span>
             </button>
             <div class="tpl-info-tooltip" id="tpl-info-phone" role="tooltip" hidden>
-              <p>Best number for texts (+1 or digits — formatted on copy).</p>
+              <p>Build Lead adds +1 automatically (e.g. +1(401)300-0957). Same format when you copy the template.</p>
             </div>
           </div>
         </div>
@@ -122,7 +135,9 @@
         </div>
       </div>
     </div>
-    <p class="tpl-footnote">Not sure what to enter? Click the <strong>info icon</strong> (<span class="tpl-footnote-ico" data-icon="info" aria-hidden="true"></span>) beside any field for a quick tip.</p>
+    <div class="tpl-footnote-block">
+      <p class="tpl-footnote">Not sure what to enter? Click the <strong>info icon</strong> (<span class="tpl-footnote-ico" data-icon="info" aria-hidden="true"></span>) beside any field for a quick tip.</p>
+    </div>
   </div>
   <script src="js/config.js"></script>
   <script src="js/image-preload.js"></script>

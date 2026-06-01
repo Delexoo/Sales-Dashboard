@@ -1,5 +1,6 @@
 /**
- * Team lead workflow (Complete, Pending) — Supabase when configured.
+ * Team lead workflow — Complete is shared with all reps; Pending locks a lead
+ * out of everyone else's Active list until the owner sets Active or Complete.
  * Per-rep overlay: Removed only. Quick Save + Pin live in leads-page (RepStorage).
  */
 (function (global) {
@@ -12,8 +13,14 @@
   let onUpdate = null;
   let realtimeTimer = null;
   let lastMapJson = "";
+  /** null = unknown, true/false after first fetch */
+  let hasWorkflowColumn = null;
+  let hasCalledByIdColumn = null;
 
   const WORKFLOW_KEY = "lpc_lead_workflow_v1";
+  const TEAM_SELECT_WITH_WORKFLOW =
+    "lead_id,business_name,called,called_by,called_by_id,called_at,workflow";
+  const TEAM_SELECT_LEGACY = "lead_id,business_name,called,called_by,called_at";
 
   function loadWorkflowRaw() {
     if (global.RepStorage?.loadItem) return global.RepStorage.loadItem(WORKFLOW_KEY);
@@ -65,13 +72,23 @@
         workflow: "pending",
         called: false,
         pendingBy: getRepName(),
+        pendingById: getRepId(),
         pendingAt: new Date().toISOString(),
+      };
+    } else if (w === "not-interested") {
+      next[leadId] = {
+        workflow: "not-interested",
+        called: false,
+        calledBy: getRepName(),
+        calledById: getRepId(),
+        calledAt: new Date().toISOString(),
       };
     } else if (w === "complete") {
       next[leadId] = {
         workflow: "complete",
         called: true,
         calledBy: getRepName(),
+        calledById: getRepId(),
         calledAt: new Date().toISOString(),
       };
     } else {
@@ -100,7 +117,25 @@
     const parts = keys.map((id) => {
       const s = map[id] || {};
       const w = s.workflow || (s.called ? "complete" : "");
-      return id + ":" + w + ":" + (s.called ? "1" : "0");
+      return (
+        id +
+        ":" +
+        w +
+        ":" +
+        (s.called ? "1" : "0") +
+        ":" +
+        (s.calledBy || "") +
+        ":" +
+        (s.calledById || "") +
+        ":" +
+        (s.calledAt || "") +
+        ":" +
+        (s.pendingBy || "") +
+        ":" +
+        (s.pendingById || "") +
+        ":" +
+        (s.pendingAt || "")
+      );
     });
     return parts.join("|");
   }
@@ -137,6 +172,10 @@
     return !!(url && key && global.supabase?.createClient);
   }
 
+  function getRepId() {
+    return String(global.RepSession?.get?.()?.id || "").trim();
+  }
+
   function getRepName() {
     const fromPin = global.RepSession?.getName?.();
     if (fromPin) return fromPin;
@@ -166,7 +205,9 @@
   function rowWorkflow(row) {
     const w = String(row?.workflow || "").trim();
     if (w === "pending") return "pending";
+    if (w === "not-interested") return "not-interested";
     if (w === "complete" || row?.called) return "complete";
+    if (row?.called_by && !row?.called) return "pending";
     return "";
   }
 
@@ -174,12 +215,15 @@
     const map = {};
     (rows || []).forEach((row) => {
       const workflow = rowWorkflow(row);
+      if (!workflow) return;
       map[row.lead_id] = normalizeEntry({
         called: workflow === "complete",
         workflow,
         calledBy: row.called_by || "",
+        calledById: row.called_by_id || "",
         calledAt: row.called_at || "",
         pendingBy: workflow === "pending" ? row.called_by || "" : "",
+        pendingById: workflow === "pending" ? row.called_by_id || "" : "",
         pendingAt: workflow === "pending" ? row.called_at || "" : "",
         businessName: row.business_name || "",
       });
@@ -188,10 +232,36 @@
   }
 
   async function fetchTeam() {
-    const { data, error } = await client
-      .from("lead_status")
-      .select("lead_id,business_name,called,called_by,called_at,workflow");
-    if (error) throw error;
+    let select = TEAM_SELECT_WITH_WORKFLOW;
+    if (hasWorkflowColumn === false) select = TEAM_SELECT_LEGACY;
+    else if (hasCalledByIdColumn === false) {
+      select = "lead_id,business_name,called,called_by,called_at,workflow";
+    }
+    const { data, error } = await client.from("lead_status").select(select);
+    if (error) {
+      const msg = String(error.message || error);
+      if (
+        hasWorkflowColumn !== false &&
+        /workflow|column.*does not exist/i.test(msg)
+      ) {
+        hasWorkflowColumn = false;
+        return fetchTeam();
+      }
+      if (
+        hasCalledByIdColumn !== false &&
+        /called_by_id|column.*does not exist/i.test(msg)
+      ) {
+        hasCalledByIdColumn = false;
+        return fetchTeam();
+      }
+      throw error;
+    }
+    if (hasWorkflowColumn !== true && select.includes("workflow")) {
+      hasWorkflowColumn = true;
+    }
+    if (hasCalledByIdColumn !== true && select.includes("called_by_id")) {
+      hasCalledByIdColumn = true;
+    }
     return rowsToMap(data);
   }
 
@@ -200,14 +270,68 @@
     const row = {
       lead_id: leadId,
       called: w === "complete",
-      workflow: w || null,
-      called_by: w === "complete" || w === "pending" ? getRepName() : null,
-      called_at: w === "complete" || w === "pending" ? new Date().toISOString() : null,
+      called_by:
+        w === "complete" || w === "pending" || w === "not-interested" ? getRepName() : null,
+      called_by_id:
+        w === "complete" || w === "pending" || w === "not-interested" ? getRepId() || null : null,
+      called_at:
+        w === "complete" || w === "pending" || w === "not-interested"
+          ? new Date().toISOString()
+          : null,
       updated_at: new Date().toISOString(),
     };
+    if (hasWorkflowColumn !== false) row.workflow = w || null;
     const name = String(businessName || "").trim();
     if (name) row.business_name = name;
-    const { error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" });
+    let { error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" });
+    if (
+      error &&
+      hasWorkflowColumn !== false &&
+      /workflow|column.*does not exist/i.test(String(error.message || error))
+    ) {
+      hasWorkflowColumn = false;
+      delete row.workflow;
+      ({ error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" }));
+    }
+    if (
+      error &&
+      /called_by_id|column.*does not exist/i.test(String(error.message || error))
+    ) {
+      delete row.called_by_id;
+      ({ error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" }));
+    }
+    if (error) throw error;
+  }
+
+  async function clearTeamStatus(leadId, businessName) {
+    const row = {
+      lead_id: leadId,
+      called: false,
+      called_by: null,
+      called_by_id: null,
+      called_at: null,
+      updated_at: new Date().toISOString(),
+    };
+    if (hasWorkflowColumn !== false) row.workflow = null;
+    const name = String(businessName || "").trim();
+    if (name) row.business_name = name;
+    let { error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" });
+    if (
+      error &&
+      hasWorkflowColumn !== false &&
+      /workflow|column.*does not exist/i.test(String(error.message || error))
+    ) {
+      hasWorkflowColumn = false;
+      delete row.workflow;
+      ({ error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" }));
+    }
+    if (
+      error &&
+      /called_by_id|column.*does not exist/i.test(String(error.message || error))
+    ) {
+      delete row.called_by_id;
+      ({ error } = await client.from("lead_status").upsert(row, { onConflict: "lead_id" }));
+    }
     if (error) throw error;
   }
 
@@ -268,7 +392,12 @@
         let map = {};
         Object.entries(loadLocal()).forEach(([id, entry]) => {
           const n = normalizeEntry(entry);
-          if (n.workflow === "complete" || n.workflow === "pending") map[id] = n;
+          if (
+            n.workflow === "complete" ||
+            n.workflow === "pending" ||
+            n.workflow === "not-interested"
+          )
+            map[id] = n;
         });
         if (workflow === "removed") {
           saveWorkflowOverlayEntry(leadId, "removed");
@@ -278,7 +407,12 @@
         }
         const persist = {};
         Object.entries(map).forEach(([id, entry]) => {
-          if (entry.workflow === "complete" || entry.workflow === "pending") persist[id] = entry;
+          if (
+            entry.workflow === "complete" ||
+            entry.workflow === "pending" ||
+            entry.workflow === "not-interested"
+          )
+            persist[id] = entry;
         });
         saveLocal(persist);
         emitUpdate(mergePersonalOverlay(map), { mode: "local" });
@@ -297,7 +431,12 @@
       let map = {};
       Object.entries(loadLocal()).forEach(([id, entry]) => {
         const n = normalizeEntry(entry);
-        if (n.workflow === "complete" || n.workflow === "pending") map[id] = n;
+        if (
+          n.workflow === "complete" ||
+          n.workflow === "pending" ||
+          n.workflow === "not-interested"
+        )
+          map[id] = n;
       });
       emitUpdate(mergePersonalOverlay(map), { mode: "local" });
       return buildLocalApi();
@@ -322,8 +461,13 @@
           } else {
             saveWorkflowOverlayEntry(leadId, "");
             if (!w || w === "active") {
-              await deleteTeamStatus(leadId);
-            } else if (w === "complete" || w === "pending") {
+              await clearTeamStatus(leadId, businessName);
+              try {
+                await deleteTeamStatus(leadId);
+              } catch (e) {
+                /* delete optional — upsert clear is enough; needs delete RLS policy */
+              }
+            } else if (w === "complete" || w === "pending" || w === "not-interested") {
               await upsertTeam(leadId, w, businessName);
             }
           }
@@ -346,9 +490,16 @@
     return mode;
   }
 
+  async function refreshTeam() {
+    if (!client) return null;
+    const map = await fetchTeam();
+    emitUpdate(map, { mode: "team", source: "refresh" });
+    return map;
+  }
+
   function isConfigured() {
     return canUseTeam();
   }
 
-  global.LeadSync = { init, getMode, isConfigured };
+  global.LeadSync = { init, getMode, isConfigured, refreshTeam };
 })(window);

@@ -168,7 +168,7 @@
       duration: "~3 min",
       progressKey: "module_setup_accounts",
       alsoProgress: ["module_setup"],
-      progressKeys: ["telegram", "payout"],
+      progressKeys: ["telegram", "payout", "surveyComplete"],
       embedSurvey: true,
     },
     {
@@ -199,8 +199,7 @@
           title: "Dashboard",
           transcript: true,
           body: [
-            "Your home after sign-in — set an income goal and watch commission and sales add up.",
-            "When Delexo confirms a close, log it under Log a sale (amount + optional business name) so your tracker stays accurate.",
+            "The Dashboard is your home base. Here you can access quick links, set income goals, track your commissions and sales, monitor successful deals, and view your overall progress in one place.",
           ],
         },
         {
@@ -209,18 +208,18 @@
           title: "Lead Finder",
           transcript: true,
           body: [
-            "Your calling list — search, filter, open a card, dial the number.",
-            "Filters like No website match our pitch. Complete and Pending are visible to the whole team. Quick Save (heart) and Pin are only for you. Interested leads go to Telegram.",
+            "Lead Finder helps you quickly find local businesses that need a website. Open Lead Finder to see available businesses, and use filters to sort businesses with or without websites.",
+            "You can organize leads by marking them as Complete, Pending, Pinned, Liked (Quick Save), or Removed.",
+            "The best feature is Auto-Fill. With one click, business details are sent into Lead Builder with much of the information already filled in, saving you time and reducing manual work. Depending on the number of reviews, it also auto-selects the website price — you can always change it.",
           ],
         },
         {
           id: "call-scripts",
-          label: "Call scripts",
-          title: "Call scripts",
+          label: "Call Scripts",
+          title: "Call Scripts",
           transcript: true,
           body: [
-            "Talk tracks for the free demo pitch — open before you dial.",
-            "Pick a script; edits save to your account. Use FAQ tier pricing — don't invent numbers. Pushback goes in Lead Builder; escalate via Meet the Owner if needed.",
+            "Call Scripts are straightforward: choose a script to use on a call, edit them to your liking, and your changes save automatically to your account.",
           ],
         },
         {
@@ -229,28 +228,25 @@
           title: "Lead Builder",
           transcript: true,
           body: [
-            "Only after they said yes on the call.",
-            "Direct Link or Booking — name, business, tier, maps link, phone. Copy the message into Interested Businesses on Telegram; price must match what you quoted.",
+            "When a business owner is interested in getting a website, fill out the details in Lead Builder. When you are done, paste everything into the Interested Businesses channel on Telegram.",
           ],
         },
         {
           id: "text-email",
-          label: "Text & email",
-          title: "Text & email",
+          label: "Text & Email",
+          title: "Text & Email",
           transcript: true,
           body: [
-            "Short follow-ups when they did not answer — not your main pitch.",
-            "No payment or unauthorized promises. Keep dialing Lead Finder; this page is for no-answer only.",
+            "Here you will find brief templates for outreach and short follow-ups.",
           ],
         },
         {
           id: "setup-checklist",
-          label: "Setup checklist",
-          title: "Setup checklist",
+          label: "Setup Checklist",
+          title: "Setup Checklist",
           transcript: true,
           body: [
-            "Onboarding scoreboard: course modules, Telegram, payout, and key tools before your first call.",
-            "Check items off as you finish. Mark anything you completed elsewhere (e.g. payout in Settings).",
+            "Double-check that everything is completed and ready to go before your first call.",
           ],
         },
         {
@@ -259,8 +255,16 @@
           title: "Meet the Owner",
           transcript: true,
           body: [
-            "Reach Delexo when FAQ and the course don't cover it — deals, lockouts, unusual calls.",
-            "Message from the page or Telegram. PINs are personal; wait out the timer or contact Delexo if locked out.",
+            "This is Delexo, the owner. You can always contact Delexo if you have technical issues, questions, or concerns.",
+          ],
+        },
+        {
+          id: "contributors",
+          label: "Contributors",
+          title: "Contributors",
+          transcript: true,
+          body: [
+            "View the sales team and each member's status — hours online, commissions, and sales.",
           ],
         },
         {
@@ -269,8 +273,7 @@
           title: "Settings",
           transcript: true,
           body: [
-            "Theme, preferences, and payout (Cash App, Venmo, PayPal, Zelle).",
-            "Add payout here if you skipped Setup Accounts. Changes save to your rep profile.",
+            "Change your name, profile picture, payout method, and appearance. Sign out when you are done for the day.",
           ],
         },
         {
@@ -279,18 +282,16 @@
           title: "FAQ",
           transcript: true,
           body: [
-            "Day-to-day rules: where to post leads, Team Telegram, tiers, tough calls.",
-            "Read how you get paid before quoting prices. Try FAQ before messaging the owner.",
+            "Frequently asked questions about day-to-day work, pricing, Telegram, and how you get paid.",
           ],
         },
         {
           id: "all-links",
-          label: "All links",
-          title: "All links",
+          label: "All Links",
+          title: "All Links",
           transcript: true,
           body: [
-            "One table of pages, course modules, and team Telegram URLs.",
-            "Use when you need Interested Businesses or a course link fast — handy on mobile.",
+            "Access all available links on the website in one place — pages, course modules, and team Telegram channels.",
           ],
         },
         {
@@ -299,8 +300,7 @@
           title: "Feedback",
           transcript: true,
           body: [
-            "Ideas to improve the platform — workflow, features, unclear copy.",
-            "Not for broken pages (use Bug Bounty). Include the page name; your rep name is attached.",
+            "Share ideas to improve the platform, workflow, and features. Not for bugs — use Bug Bounty for anything broken.",
           ],
         },
         {
@@ -309,8 +309,7 @@
           title: "Bug Bounty",
           transcript: true,
           body: [
-            "Broken pages, payout not saving, Lead Finder errors, PIN issues beyond the timer.",
-            "What you clicked, expected vs actual; screenshots help. Feedback = ideas; Bug Bounty = defects.",
+            "Get paid if you find a bug on our website or system. Describe what you clicked, what you expected, and what happened instead.",
           ],
         },
       ],
@@ -410,14 +409,38 @@
 
   function isComplete(mod, progress) {
     if (!mod || !progress) return false;
+    if (mod.embedSurvey) {
+      if (!mod.progressKeys?.length) return !!progress[mod.progressKey];
+      return mod.progressKeys.every((k) => progress[k]);
+    }
     if (mod.progressKeys?.length) return mod.progressKeys.every((k) => progress[k]);
     if (mod.progressKey) return !!progress[mod.progressKey];
     return false;
   }
 
+  /** Drop stale module flags when survey prerequisites were never finished. */
+  function reconcileProgress(progress) {
+    if (!progress || typeof progress !== "object") return {};
+    const next = { ...progress };
+    MODULES.forEach((mod) => {
+      if (!mod.embedSurvey || !mod.progressKey || !next[mod.progressKey]) return;
+      const ready = mod.progressKeys?.length
+        ? mod.progressKeys.every((k) => next[k])
+        : true;
+      if (ready) return;
+      delete next[mod.progressKey];
+      if (mod.alsoProgress) mod.alsoProgress.forEach((k) => delete next[k]);
+    });
+    return next;
+  }
+
   function markComplete(mod, progress) {
     if (!mod) return progress;
     const next = { ...progress };
+    if (mod.progressKeys?.length) {
+      const ready = mod.progressKeys.every((k) => next[k]);
+      if (!ready) return next;
+    }
     if (mod.progressKey) next[mod.progressKey] = true;
     if (mod.alsoProgress) mod.alsoProgress.forEach((k) => (next[k] = true));
     return next;
@@ -460,6 +483,7 @@
     embedUrl,
     chapterById,
     isComplete,
+    reconcileProgress,
     markComplete,
     completedCount,
     nextModule,

@@ -12,7 +12,7 @@
   <div id="page-body">
     <p class="page-label" data-icon="phone">Daily tools</p>
     <h1>Call scripts</h1>
-    <p class="lead">Pick a script before you dial. Edit any script — your changes save to your account and come back next time you sign in. Add your own scripts below, or use <a class="link-bold-blue" href="template.html">Lead Builder</a> when they are interested.</p>
+    <p class="lead">Pick a script before you dial — your edits save to your account. Feel free to write your own if you think of something better. Use <a class="link-bold-blue" href="template.html">Lead Builder</a> when they are interested.</p>
 
     <div id="scripts-editor">
       <div class="acc" data-script-id="a">
@@ -23,13 +23,15 @@
             <button type="button" class="btn secondary script-dl-btn" data-format="txt">.txt</button>
             <button type="button" class="btn secondary script-dl-btn" data-format="md">.md</button>
           </div>
-          <div class="script-block">
+          <div class="script-block script-block-opener">
             <span class="script-label">Opener</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-opener">"Hey, is this the owner?" <em>(If NO → Script D)</em><br><br>"Good morning/afternoon — how is your day?"<br><br>"Listen — I'll be honest, this is a sales call. Do you want to hang up on me, or do you want to give me 30 seconds?"</div>
+            <p class="script-prompt">"Hey, is this the owner?"</p>
+            <button type="button" class="btn secondary script-open-btn" data-script-id="d">If NO — open Script D</button>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-opener">"Good morning/afternoon — how is your day?"<br><br>"Listen — I'll be honest, this is a sales call. Do you want to hang up on me, or do you want to give me 30 seconds?"</div>
           </div>
           <div class="script-block">
             <span class="script-label">Pitch</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-pitch">"So I actually went ahead and took a risk — I already built you a <strong>free website</strong>. It's free to look at. And if you like it, I'm only asking for <strong>$500</strong>. If you don't like it, you never have to hear from me ever again. How does that sound?"</div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-pitch">"So I actually went ahead and took a risk — I already built you a free website. It's free to look at. And if you like it, I'm only asking for $500. If you don't like it, you never have to hear from me ever again. How does that sound?"</div>
           </div>
           <div class="script-block">
             <span class="script-label">If hesitant</span>
@@ -50,9 +52,11 @@
             <button type="button" class="btn secondary script-dl-btn" data-format="txt">.txt</button>
             <button type="button" class="btn secondary script-dl-btn" data-format="md">.md</button>
           </div>
-          <div class="script-block">
+          <div class="script-block script-block-opener">
             <span class="script-label">Opener</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="b-opener">"Hello — is this the owner?" <em>(If NO → Script D)</em><br><br>"Hi — this might be your <strong>least favorite call of the day</strong>. It's a cold call — I'll keep it to <strong>20 seconds</strong>, or you could hang up right now." <em>(wait for yes)</em></div>
+            <p class="script-prompt">"Hello — is this the owner?"</p>
+            <button type="button" class="btn secondary script-open-btn" data-script-id="d">If NO — open Script D</button>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="b-opener">"Hi — this might be your <strong>least favorite call of the day</strong>. It's a cold call — I'll keep it to <strong>20 seconds</strong>, or you could hang up right now." <em>(wait for yes)</em></div>
           </div>
           <div class="script-block">
             <span class="script-label">Hook</span>
@@ -77,9 +81,11 @@
             <button type="button" class="btn secondary script-dl-btn" data-format="txt">.txt</button>
             <button type="button" class="btn secondary script-dl-btn" data-format="md">.md</button>
           </div>
-          <div class="script-block">
+          <div class="script-block script-block-opener">
             <span class="script-label">Opener</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="c-opener">"Hey, is this the business owner?" <em>(If NO → Script D)</em><br><br>"Hey, my name is [Your Name] — I'm a student locally and I run a small website design business on the side. I built a free personalized landing page for your business."</div>
+            <p class="script-prompt">"Hey, is this the business owner?"</p>
+            <button type="button" class="btn secondary script-open-btn" data-script-id="d">If NO — open Script D</button>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="c-opener">"Hey, my name is [Your Name] — I'm a student locally and I run a small website design business on the side. I built a free personalized landing page for your business."</div>
           </div>
           <div class="script-block">
             <span class="script-label">Qualify + offer</span>

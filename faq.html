@@ -14,7 +14,34 @@
     <h1>FAQ</h1>
     <p class="lead">Quick answers before and during your calls. Tap a question to expand.</p>
 
-    <section class="card faq-section">
+    <section class="card faq-section faq-qa-section" id="faq-qa-panel" aria-labelledby="faq-qa-title">
+      <h2 class="section-head" id="faq-qa-title" data-icon="users">Ask the team</h2>
+
+      <form id="faq-qa-ask-form" class="faq-qa-ask card" autocomplete="off">
+        <div class="faq-qa-ask-row">
+          <img class="faq-qa-avatar faq-qa-ask-avatar" id="faq-qa-ask-avatar" src="https://github.com/Delexoo/Sales-Dashboard/raw/main/doc/default.jpg" alt="" width="44" height="44" decoding="async">
+          <div class="faq-qa-ask-fields">
+            <p class="faq-qa-ask-as muted">Posting as <strong id="faq-qa-ask-rep">—</strong></p>
+            <label class="sr-only" for="faq-qa-ask-body">Your question</label>
+            <textarea id="faq-qa-ask-body" class="faq-qa-textarea" rows="3" maxlength="2000" placeholder="Ask anything the FAQ doesn’t cover…"></textarea>
+          </div>
+        </div>
+        <p id="faq-qa-ask-status" class="faq-qa-status" hidden></p>
+        <div class="faq-qa-form-actions">
+          <button type="submit" class="btn" id="faq-qa-ask-submit" data-icon="help-circle" data-icon-class="ico-btn">Ask question</button>
+        </div>
+      </form>
+
+      <p class="faq-qa-loading muted" id="faq-qa-loading" hidden>Loading questions…</p>
+      <div class="faq-qa-empty dash-empty" id="faq-qa-empty">
+        <p class="dash-empty-title">No team questions yet</p>
+        <p class="dash-empty-desc">Be the first to ask — teammates can reply below your post.</p>
+      </div>
+      <div class="faq-qa-list" id="faq-qa-list" role="list" aria-live="polite"></div>
+    </section>
+
+    <div class="faq-official" id="faq-official">
+    <section class="card faq-section faq-official-first">
       <h2 class="section-head" data-icon="send">Posting &amp; Telegram</h2>
       <div class="faq-list">
         <div class="acc">
@@ -224,11 +251,13 @@
         </div>
       </div>
     </section>
+    </div>
 
     <p class="faq-footer-note muted">Still stuck? <a class="link-bold-blue" href="owner.html">Meet the Owner</a> or send <a class="link-bold-blue" href="feedback.html">Feedback</a>.</p>
   </div>
   <script src="js/config.js"></script>
   <script src="js/image-preload.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/icons.js"></script>
   <script src="js/rep-session.js"></script>
   <script src="js/rep-settings-sync.js"></script>
@@ -238,5 +267,8 @@
   <script src="js/layout-fix.js"></script>
   <script src="js/course-modules.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/rep-profile-photo.js"></script>
+  <script src="js/rep-identity.js"></script>
+  <script src="js/faq-qa.js"></script>
 </body>
 </html>

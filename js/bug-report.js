@@ -150,12 +150,9 @@
     const statusEl = root.querySelector("#bug-report-status");
     const previewEl = root.querySelector("#bug-report-previews");
     const fileInput = root.querySelector("#bug-report-files");
-    const repNameEl = root.querySelector("#bug-report-rep-name");
-    function setRepLabel() {
-      const r = rep();
-      if (repNameEl) repNameEl.textContent = r?.name || "—";
+    if (global.RepIdentity?.whenIdentityReady) {
+      global.RepIdentity.whenIdentityReady(() => {});
     }
-    setRepLabel();
 
     if (!canSubmit()) {
       showStatus(
@@ -186,8 +183,12 @@
 
     form?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const rNow = rep();
-      if (!rNow) {
+      let rNow = rep();
+      if (!rNow?.id && global.RepIdentity?.resolveRepIdentity) {
+        await global.RepIdentity.resolveRepIdentity();
+        rNow = rep();
+      }
+      if (!rNow?.id) {
         showStatus(statusEl, "Sign in with your PIN first.", "err");
         return;
       }
@@ -231,7 +232,6 @@
         pickedFiles = [];
         renderPreviews(previewEl);
         form.reset();
-        setRepLabel();
 
         showStatus(statusEl, "Sent — thanks!", "ok");
       } catch (err) {

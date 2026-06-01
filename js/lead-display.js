@@ -89,6 +89,25 @@
     return digits.length < 10;
   }
 
+  /** US display for Lead Builder + copy template: +1(401)300-0957 */
+  function formatPhoneForLeadBuilder(value) {
+    const t = raw(value);
+    if (!t || isNullMarker(t)) return "";
+    let d = t.replace(/\D/g, "");
+    if (!d) return "";
+    if (d.length === 11 && d[0] === "1") d = d.slice(1);
+    if (d.length > 10) d = d.slice(-10);
+    if (d.length === 10) {
+      return "+1(" + d.slice(0, 3) + ")" + d.slice(3, 6) + "-" + d.slice(6);
+    }
+    if (d[0] !== "1") d = "1" + d;
+    d = d.slice(0, 11);
+    const n = d[0] === "1" ? d.slice(1) : d;
+    if (n.length <= 3) return "+1(" + n;
+    if (n.length <= 6) return "+1(" + n.slice(0, 3) + ")" + n.slice(3);
+    return "+1(" + n.slice(0, 3) + ")" + n.slice(3, 6) + "-" + n.slice(6);
+  }
+
   function format(value, notListedLabel, isInvalid) {
     const v = raw(value);
     if (!v) return notListedLabel;
@@ -189,11 +208,12 @@
       if (c <= 100) return "$1,000";
       return "$1,500";
     },
+    formatPhoneForLeadBuilder,
     buildLeadBuilderPick(lead) {
-      const phone = raw(lead?.phone);
+      const phone = formatPhoneForLeadBuilder(lead?.phone);
       const mapsUrl = raw(lead?.mapsUrl);
       return {
-        phone: phone && phone.toUpperCase() !== "NULL" ? phone : "",
+        phone,
         mapsUrl,
         price: global.LeadDisplay.priceTierFromReviewCount(lead?.reviewCount),
       };

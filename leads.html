@@ -15,41 +15,65 @@
     <p class="lead leads-lead">Browse businesses with no website — mark called and send interested leads to the Lead Builder.</p>
 
     <section class="card leads-toolbar">
-      <div class="leads-toolbar-row">
+      <div class="leads-toolbar-head">
         <div class="leads-toolbar-metrics" aria-live="polite">
           <span class="leads-metric"><strong id="lf-stat-total">—</strong> Leads</span>
           <span class="leads-metric-sep" aria-hidden="true">·</span>
           <span class="leads-metric"><strong id="lf-stat-showing">—</strong> showing</span>
           <span class="leads-metric-sep" aria-hidden="true">·</span>
-          <span class="leads-metric leads-metric-called"><strong id="lf-stat-done">—</strong> Called</span>
-          <p class="leads-toolbar-hint muted" id="lf-count" hidden></p>
+          <span class="leads-metric leads-metric-called"><strong id="lf-stat-done">—</strong> You called</span>
         </div>
-        <div class="leads-toolbar-actions">
-          <button type="button" class="lf-refresh-btn" id="lf-refresh" aria-label="Refresh leads from database">
-            <span data-icon="repeat-2" data-icon-class="lf-refresh-ico" aria-hidden="true"></span>
-            Refresh leads
-          </button>
-          <div class="lf-website-toggle" role="group" aria-label="Filter by website">
-            <button type="button" class="lf-toggle-btn" data-filter="web">Website</button>
-            <button type="button" class="lf-toggle-btn active" data-filter="noweb" aria-pressed="true">No website</button>
-            <button type="button" class="lf-toggle-btn" data-filter="all">All</button>
-          </div>
+        <button type="button" class="lf-refresh-btn" id="lf-refresh" aria-label="Refresh leads from database">
+          <span data-icon="repeat-2" data-icon-class="lf-refresh-ico" aria-hidden="true"></span>
+          Refresh
+        </button>
+      </div>
+
+      <div class="leads-toolbar-filters">
+        <div class="lf-filter-group lf-filter-view">
+          <span class="lf-filter-label">List</span>
           <label class="lf-workflow-select-wrap">
             <select id="lf-workflow-view" class="lf-workflow-select" aria-label="Lead list view">
               <option value="default">Active</option>
               <option value="saved">Quick Save</option>
               <option value="pinned">Pinned</option>
               <option value="complete">Completed</option>
+              <option value="not-interested">Not interested</option>
               <option value="pending">Pending</option>
               <option value="removed">Removed</option>
             </select>
           </label>
         </div>
+        <div class="lf-filter-group lf-filter-website">
+          <span class="lf-filter-label">Website</span>
+          <div class="lf-website-toggle" id="lf-website-filter" role="group" aria-label="Filter by website">
+            <button type="button" class="lf-toggle-btn" data-filter="web">Website</button>
+            <button type="button" class="lf-toggle-btn active" data-filter="noweb" aria-pressed="true">No website</button>
+            <button type="button" class="lf-toggle-btn" data-filter="all">All</button>
+          </div>
+        </div>
+        <div class="lf-filter-group lf-filter-reviews">
+          <span class="lf-filter-label">Reviews</span>
+          <div class="lf-reviews-toggle lf-pill-toggle" id="lf-reviews-filter" role="group" aria-label="Filter by review count">
+            <button type="button" class="lf-toggle-btn active" data-reviews-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="lf-toggle-btn" data-reviews-filter="1" aria-pressed="false">1</button>
+            <button type="button" class="lf-toggle-btn" data-reviews-filter="2" aria-pressed="false">2</button>
+            <button type="button" class="lf-toggle-btn" data-reviews-filter="3" aria-pressed="false">3</button>
+            <button type="button" class="lf-toggle-btn" data-reviews-filter="4" aria-pressed="false">4</button>
+            <button type="button" class="lf-toggle-btn" data-reviews-filter="5" aria-pressed="false">5</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="leads-toolbar-categories" id="lf-toolbar-extra" hidden>
+        <div class="lf-filter-group lf-filter-categories">
+          <span class="lf-filter-label" title="Click a category to move those leads to the top of the list">Priority categories</span>
+          <div class="leads-chips" id="lf-category-chips" role="group" aria-label="Priority categories"></div>
+        </div>
       </div>
     </section>
 
     <div class="leads-grid" id="lf-grid" aria-live="polite"></div>
-    <p class="leads-empty muted" id="lf-empty" hidden>No leads match your filters.</p>
   </div>
 
   <script src="js/config.js"></script>
@@ -67,6 +91,7 @@
   <script src="js/lead-display.js"></script>
   <script src="js/leads-loader.js"></script>
   <script src="js/lead-sync.js"></script>
+  <script src="js/rep-profile-photo.js"></script>
   <script src="js/leads-page.js"></script>
 </body>
 </html>
