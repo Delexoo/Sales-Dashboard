@@ -19,12 +19,16 @@
     return !!mod.embedSurvey;
   }
 
+  function hasEmbedPreferencesSurvey(mod) {
+    return !!mod.embedPreferencesSurvey;
+  }
+
   function hasEmbedEverydayTasks(mod) {
     return !!mod.embedEverydayTasks;
   }
 
   function hasSplitAside(mod) {
-    return hasEmbedSurvey(mod) || hasEmbedEverydayTasks(mod);
+    return hasEmbedSurvey(mod) || hasEmbedPreferencesSurvey(mod) || hasEmbedEverydayTasks(mod);
   }
 
   function hasChapters(mod) {
@@ -313,6 +317,28 @@
     );
   }
 
+  function preferencesSurveyPanelBlock() {
+    return (
+      '<aside class="course-module-aside course-module-aside--survey" id="course-module-aside" aria-label="Preferences onboarding">' +
+      '<div class="course-side-panel course-side-panel--survey" id="course-side-panel">' +
+      '<div id="preferences-survey" class="accounts-survey accounts-survey--embedded preferences-survey">' +
+      '<header class="survey-progress-wrap">' +
+      '<div class="survey-progress-top">' +
+      '<p class="survey-progress-text" id="preferences-survey-progress-text">Step 1 of 4</p>' +
+      '<div class="survey-progress-actions">' +
+      '<button type="button" class="survey-back" id="preferences-survey-back" title="Previous step" aria-label="Previous step">Back</button>' +
+      '<button type="button" class="survey-restart" id="preferences-survey-restart" title="Start over" aria-label="Restart preferences">Restart</button>' +
+      "</div></div>" +
+      '<div class="survey-progress-track" aria-hidden="true">' +
+      '<div class="survey-progress-bar" id="preferences-survey-progress-bar"></div>' +
+      "</div></header>" +
+      '<div id="preferences-survey-stage" class="survey-stage" aria-live="polite"></div>' +
+      "</div>" +
+      "</div>" +
+      "</aside>"
+    );
+  }
+
   function sidePanelBlock() {
     return (
       '<aside class="course-module-aside" id="course-module-aside" aria-hidden="true">' +
@@ -363,6 +389,7 @@
 
   function asideBlock(mod) {
     if (hasEmbedSurvey(mod)) return surveyPanelBlock();
+    if (hasEmbedPreferencesSurvey(mod)) return preferencesSurveyPanelBlock();
     if (hasEmbedEverydayTasks(mod)) return everydayTasksPanelBlock();
     if (hasChapters(mod)) return sidePanelBlock();
     return "";
@@ -709,6 +736,13 @@
         global.AccountsSurvey.mount().catch((e) => console.warn("Embedded survey mount failed", e));
       } else if (global.AccountsSurvey?.init) {
         global.AccountsSurvey.init();
+      }
+    }
+    if (hasEmbedPreferencesSurvey(mod)) {
+      if (global.PreferencesSurvey?.mount) {
+        global.PreferencesSurvey.mount().catch((e) => console.warn("Preferences survey mount failed", e));
+      } else if (global.PreferencesSurvey?.init) {
+        global.PreferencesSurvey.init();
       }
     }
     if (hasEmbedEverydayTasks(mod) && global.EverydayTasks?.renderInto) {

@@ -13,6 +13,7 @@
   let payoutRefresh = null;
   let settingsMounted = false;
   let profilePhotoBusy = false;
+  const DARK_UI_COLORS = new Set(["black"]);
 
   function trackerName(id) {
     try {
@@ -58,8 +59,10 @@
 
   function paintAppearancePrefs(prefs) {
     if (!prefs) return;
-    document.querySelectorAll("[data-theme-pick]").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.themePick === prefs.theme);
+    document.querySelectorAll("[data-ui-color-pick]").forEach((btn) => {
+      const isActive = btn.dataset.uiColorPick === (prefs.uiColor || "current");
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
     });
 
     const fsBtn = $("settings-fullscreen-hint-toggle");
@@ -233,6 +236,28 @@
 
   }
 
+  async function saveDisplayNameViaSettingsSync(repId, newName) {
+    global.RepSession.set({ id: repId, name: newName });
+    if (global.RepStorage?.flushSync) {
+      await global.RepStorage.flushSync();
+    } else if (global.RepStorage?.push) {
+      await global.RepStorage.push();
+    } else {
+      throw new Error("Team settings sync is unavailable.");
+    }
+    return { id: repId, name: newName };
+  }
+
+  async function saveDisplayNameCloud(repId, newName) {
+    try {
+      const result = await updateDisplayNameCloud(repId, newName);
+      if (result?.id) return result;
+    } catch (rpcErr) {
+      console.warn("update_rep_display_name failed; using settings sync fallback", rpcErr);
+    }
+    return saveDisplayNameViaSettingsSync(repId, newName);
+  }
+
 
 
   async function updateProfileCloud(repId, currentPin, newName, newPin) {
@@ -259,26 +284,26 @@
 
 
 
-  function bindThemeSegment(prefs) {
+  function bindUiColorGrid(prefs) {
+    document.querySelectorAll("[data-ui-color-pick]").forEach((btn) => {
+      const pick = btn.dataset.uiColorPick;
+      const isActive = pick === (prefs.uiColor || "current");
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
 
-    document.querySelectorAll("[data-theme-pick]").forEach((btn) => {
-
-      const pick = btn.dataset.themePick;
-
-      btn.classList.toggle("active", pick === prefs.theme);
+      if (btn.dataset.uiColorBound === "1") return;
+      btn.dataset.uiColorBound = "1";
 
       btn.addEventListener("click", () => {
-
-        prefs.theme = pick;
-
-        global.UserPrefs.save(prefs);
-
-        bindThemeSegment(prefs);
-
+        const nextPrefs = {
+          ...global.UserPrefs.get(),
+          theme: DARK_UI_COLORS.has(pick) ? "dark" : "light",
+          uiColor: pick,
+        };
+        global.UserPrefs.save(nextPrefs);
+        paintAppearancePrefs(nextPrefs);
       });
-
     });
-
   }
 
 
@@ -329,7 +354,7 @@
   }
 
   function initAppearance(prefs) {
-    bindThemeSegment(prefs);
+    bindUiColorGrid(prefs);
     bindFullscreenHintToggle(prefs);
     bindSignOutFloatToggle(prefs);
   }
@@ -455,17 +480,7 @@
 
         if (useCloudProfile()) {
 
-          const result = await updateDisplayNameCloud(rep.id, name);
-
-          if (!result?.id) {
-
-            showStatus(status, "Could not save name.", false);
-
-            if (nameEl) nameEl.value = savedName;
-
-            return;
-
-          }
+          const result = await saveDisplayNameCloud(rep.id, name);
 
           global.RepSession.set({ id: result.id, name: result.name });
 
@@ -692,6 +707,7 @@
     let defaultPick = null;
 
     function showPayoutStatus(msg, ok) {
+      if (ok) return;
       showStatus(status, msg, ok);
     }
 
@@ -802,18 +818,10 @@
       if (defaultPick === methods[0]?.method) return;
 
       defaultBtn.disabled = true;
-      showPayoutStatus("Updating default…", true);
       try {
         methods = await PS.setDefaultPayout(defaultPick);
         syncDefaultPick();
         renderList();
-        showPayoutStatus(
-          PS.methodLabel(defaultPick) + " is now your default payout method.",
-          true
-        );
-        setTimeout(() => {
-          if (status?.textContent?.includes("default payout")) showPayoutStatus("", true);
-        }, 2200);
       } catch (e) {
         console.warn(e);
         showPayoutStatus(e.message || "Could not set default.", false);
@@ -872,17 +880,10 @@
           const id = btn.dataset.removeMethod;
           if (!id || btn.disabled) return;
           btn.disabled = true;
-          showPayoutStatus("Removing…", true);
           try {
             methods = await PS.removeOne(id);
             syncDefaultPick();
             renderList();
-            showPayoutStatus(
-              methods.length
-                ? "Removed from your account and Supabase."
-                : "All payout methods removed from your account and Supabase.",
-              true
-            );
           } catch (e) {
             console.warn(e);
             showPayoutStatus(e.message || "Could not remove.", false);
@@ -957,17 +958,12 @@
         return;
       }
       saveBtn.disabled = true;
-      showPayoutStatus("Saving…", true);
       try {
         await PS.saveOne(selectedMethod, link);
         methods = await PS.fetchAllMine();
         PS.markPayoutChecklistDone();
         renderList();
         closeAddPanel();
-        showPayoutStatus("Saved.", true);
-        setTimeout(() => {
-          if (status?.textContent === "Saved.") showPayoutStatus("", true);
-        }, 2000);
       } catch (e) {
         console.warn(e);
         showPayoutStatus(e.message || "Could not save.", false);

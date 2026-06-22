@@ -107,30 +107,50 @@
     }
   }
 
-  let onlineHeartbeatStarted = false;
+  let onlineHeartbeatArmed = false;
 
   function startOnlineHeartbeat() {
-    if (onlineHeartbeatStarted || !getId()) return;
-    onlineHeartbeatStarted = true;
-    touchOnline();
-    setInterval(touchOnline, 60 * 1000);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
+    if (!getId()) return;
+
+    function arm() {
+      if (!getId()) return;
+      touchOnline();
+      if (onlineHeartbeatArmed) return;
+      onlineHeartbeatArmed = true;
+      setInterval(touchOnline, 60 * 1000);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          try {
+            const meta = readSessionMeta();
+            meta.activeSince = new Date().toISOString();
+            writeSessionMeta(meta);
+          } catch (e) {
+            /* ignore */
+          }
+          touchOnline();
+        } else {
+          pauseActiveMs();
+        }
+      });
+      window.addEventListener("beforeunload", () => {
+        pauseActiveMs();
         try {
-          const meta = readSessionMeta();
-          meta.activeSince = new Date().toISOString();
-          writeSessionMeta(meta);
+          global.RepStorage?.flushSync?.();
         } catch (e) {
           /* ignore */
         }
-        touchOnline();
-      } else {
-        pauseActiveMs();
-      }
-    });
-    window.addEventListener("beforeunload", () => {
-      pauseActiveMs();
-    });
+      });
+    }
+
+    if (global.RepStorage?.whenReady) {
+      global.RepStorage.whenReady(arm);
+      return;
+    }
+    if (global.RepStorage?.loadItem) {
+      arm();
+      return;
+    }
+    global.addEventListener("rep-settings-ready", () => arm(), { once: true });
   }
 
   function set(rep) {
@@ -270,6 +290,11 @@
 
   global.addEventListener("site-unlocked", () => {
     startOnlineHeartbeat();
+  });
+  global.addEventListener("rep-settings-ready", () => {
+    if (getId() && sessionStorage.getItem("lpc_site_unlock") === "1") {
+      startOnlineHeartbeat();
+    }
   });
   if (getId() && sessionStorage.getItem("lpc_site_unlock") === "1") {
     startOnlineHeartbeat();

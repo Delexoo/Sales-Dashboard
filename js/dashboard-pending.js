@@ -180,6 +180,39 @@
     }
   }
 
+  async function completePending(leadId, name) {
+    const id = String(leadId || "").trim();
+    if (!id) return;
+    const before = { ...statusMap };
+    const prev = statusMap[id] || {};
+    const now = new Date().toISOString();
+    const next = { ...statusMap };
+    next[id] = {
+      ...prev,
+      workflow: "complete",
+      called: true,
+      calledBy: getRepName(),
+      calledById: getRepId(),
+      calledAt: now,
+      businessName: String(name || prev.businessName || "").trim(),
+    };
+    delete next[id].pendingAt;
+    statusMap = next;
+    render();
+
+    try {
+      global.LeadSync?.clearPendingLocalSnapshot?.(id);
+      const api = await ensureSyncApi();
+      if (!api?.setWorkflow) throw new Error("Lead sync unavailable");
+      await api.setWorkflow(id, "complete", name);
+    } catch (e) {
+      statusMap = before;
+      render();
+      console.error(e);
+      alert("Could not mark complete. Try again.");
+    }
+  }
+
   function applyStatusMap(map) {
     statusMap = map || {};
     mergeLocalPendingOverlay();
@@ -245,6 +278,9 @@
           '<button type="button" class="btn secondary dash-pending-btn" data-dash-build-lead="' +
           id +
           '" data-icon="hammer" data-icon-class="ico-btn">Build Lead</button>' +
+          '<button type="button" class="btn secondary dash-pending-btn dash-pending-btn--complete" data-dash-complete-pending="' +
+          id +
+          '" data-icon="check" data-icon-class="ico-btn">Complete</button>' +
           '<button type="button" class="btn secondary dash-pending-btn dash-pending-btn--cancel" data-dash-cancel-pending="' +
           id +
           '">Cancel</button>' +
@@ -263,6 +299,15 @@
         const lead = pending.find((l) => String(l.id) === String(id));
         if (!lead || typeof global.forwardLeadToBuilder !== "function") return;
         global.forwardLeadToBuilder(lead);
+      });
+    });
+
+    list.querySelectorAll("[data-dash-complete-pending]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-dash-complete-pending");
+        const lead = pending.find((l) => String(l.id) === String(id));
+        if (!id || !lead) return;
+        void completePending(id, businessName(lead));
       });
     });
 
@@ -398,7 +443,7 @@
     global.addEventListener("rep-settings-synced", refresh);
   }
 
-  global.DashboardPending = { init, refresh, render };
+  global.DashboardPending = { init, refresh, render, cancelPending, completePending };
 
   if (document.body.dataset.page === "home") {
     if (document.readyState === "loading") {

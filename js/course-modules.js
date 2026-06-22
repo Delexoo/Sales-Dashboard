@@ -1,6 +1,6 @@
 /**
- * Course — 5 modules. Chapters open in the side panel; setup-accounts and everyday-tasks use split layouts.
- * Videos: SITE_CONFIG.courseModuleVideos { introduction, business, setup-accounts, dashboard, everyday-tasks }
+ * Course — 6 modules. Chapters open in the side panel; setup-accounts, preferences, and everyday-tasks use split layouts.
+ * Videos: SITE_CONFIG.courseModuleVideos { introduction, business, setup-accounts, preferences, dashboard, everyday-tasks }
  * FAQ lives at faq.html under Help.
  */
 (function (global) {
@@ -172,8 +172,20 @@
       embedSurvey: true,
     },
     {
-      id: "dashboard",
+      id: "preferences",
       num: 4,
+      title: "Preferences",
+      summary:
+        "Choose your theme, set your nickname, and add a profile photo so the dashboard feels like yours.",
+      duration: "~3 min",
+      progressKey: "module_preferences",
+      progressKeys: ["preferencesComplete"],
+      alsoProgress: ["preferences"],
+      embedPreferencesSurvey: true,
+    },
+    {
+      id: "dashboard",
+      num: 5,
       title: "Platform Tour",
       summary:
         "Quick tour of each sidebar page — what it’s for and when to open it.",
@@ -316,7 +328,7 @@
     },
     {
       id: "everyday-tasks",
-      num: 5,
+      num: 6,
       title: "Everyday Tasks",
       summary:
         "What you do every workday to close deals. Watch the demo, then follow the six steps on the right each day.",
@@ -349,6 +361,8 @@
       team: "business",
       pay: "business",
       setup: "setup-accounts",
+      prefs: "preferences",
+      settings: "preferences",
       tour: "dashboard",
       daily: "everyday-tasks",
       everyday: "everyday-tasks",

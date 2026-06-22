@@ -18,8 +18,10 @@
     "lpc_sales_onboarding_steps_v1",
     "lpc_nav_collapsed_v1",
     "lpc_sidebar_collapsed_v1",
+    "lpc_sidebar_width_v1",
     "lpc_setup_survey_step_v1",
     "lpc_accounts_survey_step_v1",
+    "lpc_preferences_survey_step_v1",
     "lpc_setup_survey_flow_v1",
     "lpc_template_builder_v1",
     "lpc_lead_finder_prefs_v1",
@@ -164,6 +166,45 @@
   }
 
   /** Keep local pins when cloud settings load before the latest pin was pushed. */
+  function pickLatestIso(a, b) {
+    const ta = a ? new Date(a).getTime() : NaN;
+    const tb = b ? new Date(b).getTime() : NaN;
+    if (Number.isNaN(ta) && Number.isNaN(tb)) return "";
+    if (Number.isNaN(ta)) return b;
+    if (Number.isNaN(tb)) return a;
+    return ta >= tb ? a : b;
+  }
+
+  /** Keep the fresher online timestamp when cloud settings load on refresh. */
+  function mergeSessionMetaJson(cloudVal, localRaw) {
+    let local = {};
+    let cloud = cloudVal;
+    try {
+      local = localRaw ? JSON.parse(localRaw) : {};
+    } catch (e) {
+      local = {};
+    }
+    if (typeof cloud === "string") {
+      try {
+        cloud = JSON.parse(cloud);
+      } catch (e) {
+        cloud = {};
+      }
+    }
+    if (!cloud || typeof cloud !== "object") cloud = {};
+
+    const merged = { ...cloud, ...local };
+    const lastOnlineAt = pickLatestIso(cloud.lastOnlineAt, local.lastOnlineAt);
+    const lastLoginAt = pickLatestIso(cloud.lastLoginAt, local.lastLoginAt);
+    if (lastOnlineAt) merged.lastOnlineAt = lastOnlineAt;
+    if (lastLoginAt) merged.lastLoginAt = lastLoginAt;
+    if (local.activeSince) merged.activeSince = local.activeSince;
+    merged.activeMs = Math.max(Number(cloud.activeMs) || 0, Number(local.activeMs) || 0);
+    merged.loginCount = Math.max(Number(cloud.loginCount) || 0, Number(local.loginCount) || 0);
+    if (cloud.firstLoginAt && !merged.firstLoginAt) merged.firstLoginAt = cloud.firstLoginAt;
+    return JSON.stringify(merged);
+  }
+
   function mergePinnedJson(cloudVal, localRaw) {
     let local = [];
     try {
@@ -203,6 +244,11 @@
       if (base === "lpc_lead_pinned_v1") {
         const localRaw = localStorage.getItem(repKey(base));
         localStorage.setItem(repKey(base), mergePinnedJson(obj[base], localRaw));
+        return;
+      }
+      if (base === "lpc_rep_session_meta_v1") {
+        const localRaw = localStorage.getItem(repKey(base));
+        localStorage.setItem(repKey(base), mergeSessionMetaJson(obj[base], localRaw));
         return;
       }
       if (base === "lpc_template_builder_v1") {
@@ -361,6 +407,8 @@
       client = global.supabase.createClient(url, key);
       flushReady();
       await pull();
+      global.RepSession?.touchOnline?.();
+      scheduleSync();
       try {
         global.dispatchEvent(new Event("rep-settings-pulled"));
       } catch (e) {

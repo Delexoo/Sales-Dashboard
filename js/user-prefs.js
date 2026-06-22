@@ -6,6 +6,7 @@
 
   const DEFAULT_PREFS = {
     theme: "light",
+    uiColor: "current",
     showCourseFullscreenHint: true,
     showSignOutFloat: true,
   };

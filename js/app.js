@@ -5,6 +5,10 @@
   const STEP_DONE_KEY = "lpc_sales_onboarding_steps_v1";
   const NAV_COLLAPSED_KEY = "lpc_nav_collapsed_v1";
   const SIDEBAR_COLLAPSED_KEY = "lpc_sidebar_collapsed_v1";
+  const SIDEBAR_WIDTH_KEY = "lpc_sidebar_width_v1";
+  const SIDEBAR_WIDTH_DEFAULT = 280;
+  const SIDEBAR_WIDTH_MIN = 248;
+  const SIDEBAR_WIDTH_MAX = 340;
   const NAV_DEFAULT_COLLAPSED = [];
 
   const NAV_GROUP_PAGES = {
@@ -200,6 +204,7 @@
     module_introduction: "introduction",
     module_business: "business",
     module_setup_accounts: "setup-accounts",
+    module_preferences: "preferences",
     module_dashboard: "dashboard",
     module_everyday_tasks: "everyday-tasks",
   };
@@ -477,12 +482,12 @@
     const name = cfg().companyName || "Sales Team Dashboard";
     if (url) {
       return (
-        `<span class="brand-mark">` +
+        `<span class="brand-mark brand-mark--image">` +
         `<img class="brand-mark-img" src="${escHtml(url)}" alt="${escHtml(name)}" width="44" height="44" decoding="async" fetchpriority="high">` +
         `</span>`
       );
     }
-    return `<span class="brand-mark">${ico("sparkles", "ico-brand")}</span>`;
+    return `<span class="brand-mark brand-mark--icon">${ico("sparkles", "ico-brand")}</span>`;
   }
 
   function navQuickLink(icon, label, attrs, external) {
@@ -509,14 +514,21 @@
     return main;
   }
 
-  function navGroup(id, label, itemsHtml) {
+  function navGroup(id, label, icon, itemsHtml) {
     return (
       `<div class="nav-group" data-nav-group="${id}">` +
-      `<button type="button" class="nav-section-toggle" aria-expanded="true" aria-controls="nav-panel-${id}" id="nav-toggle-${id}">` +
-      `<span class="nav-section-label">${label}</span>` +
-      `<span class="nav-section-chev" aria-hidden="true">${ico("chevron-right", "ico-nav-chev")}</span>` +
-      `</button>` +
+      `<div class="nav-section-label" id="nav-label-${id}">${ico(icon, "ico-nav-section")}${label}</div>` +
       `<ul class="nav-list" id="nav-panel-${id}">${itemsHtml}</ul>` +
+      `</div>`
+    );
+  }
+
+  function renderSidebarLegal(activeId) {
+    return (
+      `<div class="sidebar-legal" aria-label="Legal links">` +
+      `<a class="${activeId === "terms" ? "sidebar-legal-link active" : "sidebar-legal-link"}" href="terms.html">Terms</a>` +
+      `<span class="sidebar-legal-sep" aria-hidden="true">&middot;</span>` +
+      `<a class="${activeId === "privacy" ? "sidebar-legal-link active" : "sidebar-legal-link"}" href="privacy.html">Privacy</a>` +
       `</div>`
     );
   }
@@ -597,8 +609,77 @@
     }
   }
 
+  function clampSidebarWidth(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return SIDEBAR_WIDTH_DEFAULT;
+    return Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, Math.round(n)));
+  }
+
+  function loadSidebarWidth() {
+    try {
+      const raw = lsGet(SIDEBAR_WIDTH_KEY);
+      return clampSidebarWidth(raw || SIDEBAR_WIDTH_DEFAULT);
+    } catch (e) {
+      return SIDEBAR_WIDTH_DEFAULT;
+    }
+  }
+
+  function saveSidebarWidth(width) {
+    try {
+      lsSet(SIDEBAR_WIDTH_KEY, String(clampSidebarWidth(width)));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function applySidebarWidth(width) {
+    document.documentElement.style.setProperty("--sidebar", `${clampSidebarWidth(width)}px`);
+  }
+
   function setDesktopSidebarCollapsed(collapsed) {
     document.body.classList.toggle("sidebar-collapsed", collapsed);
+  }
+
+  function initSidebarResizer(handle) {
+    if (!handle) return;
+    const onPointerDown = (event) => {
+      if (isMobileNav()) return;
+      event.preventDefault();
+      handle.setPointerCapture?.(event.pointerId);
+      document.body.classList.add("sidebar-resizing");
+      setDesktopSidebarCollapsed(false);
+      saveSidebarCollapsed(false);
+      syncMenuBtnState(document.getElementById("menu-btn"), document.getElementById("sidebar"), document.getElementById("sidebar-overlay"));
+
+      const onPointerMove = (moveEvent) => {
+        applySidebarWidth(moveEvent.clientX);
+      };
+      const onPointerUp = (upEvent) => {
+        saveSidebarWidth(upEvent.clientX);
+        document.body.classList.remove("sidebar-resizing");
+        handle.releasePointerCapture?.(upEvent.pointerId);
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
+      };
+
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
+    };
+
+    handle.addEventListener("pointerdown", onPointerDown);
+    handle.addEventListener("dblclick", () => {
+      applySidebarWidth(SIDEBAR_WIDTH_DEFAULT);
+      saveSidebarWidth(SIDEBAR_WIDTH_DEFAULT);
+    });
+  }
+
+  function setMenuBtnIcon(btn, menuOpen) {
+    const nextIcon = ico(menuOpen ? "chevron-left" : "chevron-right", "ico-menu");
+    const currentIcon = btn.querySelector(".ico-menu");
+    if (currentIcon) currentIcon.outerHTML = nextIcon;
+    else btn.insertAdjacentHTML("afterbegin", nextIcon);
   }
 
   function syncMenuBtnState(btn, sidebar, overlay) {
@@ -606,6 +687,7 @@
     if (isMobileNav()) {
       document.body.classList.remove("sidebar-collapsed");
       const open = sidebar?.classList.contains("open");
+      setMenuBtnIcon(btn, open);
       btn.setAttribute("aria-expanded", open ? "true" : "false");
       btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
       return;
@@ -613,6 +695,7 @@
     sidebar?.classList.remove("open");
     overlay?.classList.remove("open");
     const collapsed = document.body.classList.contains("sidebar-collapsed");
+    setMenuBtnIcon(btn, !collapsed);
     btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
     btn.setAttribute("aria-label", collapsed ? "Open menu" : "Close menu");
   }
@@ -632,6 +715,7 @@
     const shell = document.getElementById("shell");
     if (!shell) return;
     ensurePageLayout();
+    applySidebarWidth(loadSidebarWidth());
     const main = document.getElementById("main-content");
 
     const chrome = document.createRange().createContextualFragment(
@@ -642,12 +726,14 @@
         `${brandMarkHtml()}` +
         `<span class="brand-text"><strong>${brandName}</strong><span class="brand-sub">${escHtml(brandSubText())}</span></span>` +
         `</a>` +
-        `<ul class="nav-list nav-list-standalone">${renderOverviewNav(activeId)}</ul>` +
-        navGroup("course", "Course", renderCourseNav(activeId, progress)) +
-        navGroup("tools", "Daily tools", renderToolsNav(activeId, progress)) +
-        navGroup("help", "Help", renderHelpNav(activeId)) +
+        `<div class="nav-group nav-group-home" data-nav-group="overview"><ul class="nav-list nav-list-standalone">${renderOverviewNav(activeId)}</ul></div>` +
+        navGroup("course", "Course", "book-open", renderCourseNav(activeId, progress)) +
+        navGroup("tools", "Daily tools", "repeat-2", renderToolsNav(activeId, progress)) +
+        navGroup("help", "Help", "help-circle", renderHelpNav(activeId)) +
+        renderSidebarLegal(activeId) +
         `</div>` +
-        `<button type="button" class="menu-btn" id="menu-btn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="true">${ico("menu", "ico-menu")}<span>Menu</span></button>` +
+        `<button type="button" class="sidebar-resize-handle" id="sidebar-resize-handle" aria-label="Resize sidebar" title="Drag to resize sidebar"></button>` +
+        `<button type="button" class="menu-btn" id="menu-btn" aria-label="Open menu" aria-controls="sidebar" aria-expanded="true">${ico("chevron-left", "ico-menu")}<span>Menu</span></button>` +
         `</aside>`
     );
     shell.insertBefore(chrome, main);
@@ -678,7 +764,8 @@
       syncMenuBtnState(btn, sidebar, overlay);
     });
     overlay.addEventListener("click", close);
-    sidebar.querySelectorAll(".nav-link, .brand").forEach((a) => a.addEventListener("click", close));
+    sidebar.querySelectorAll(".nav-link, .sidebar-legal-link, .brand").forEach((a) => a.addEventListener("click", close));
+    initSidebarResizer(document.getElementById("sidebar-resize-handle"));
     if (!window.__lpcSidebarResizeBound) {
       window.__lpcSidebarResizeBound = true;
       window.addEventListener("resize", () => {
@@ -892,6 +979,11 @@
           link: { href: "course-module.html?m=setup-accounts", label: "Open module" },
         },
         {
+          id: "module_preferences",
+          label: "Preferences",
+          link: { href: "course-module.html?m=preferences", label: "Open module" },
+        },
+        {
           id: "module_dashboard",
           label: "Platform Tour",
           link: { href: "course-module.html?m=dashboard", label: "Open module" },
@@ -1073,11 +1165,10 @@
 
     window.RepSession?.enforceTrackerIdentity?.();
     bootTracker();
+    revealTracker();
 
     if (window.RepStorage?.whenReady) {
       window.RepStorage.whenReady(revealTracker);
-    } else {
-      revealTracker();
     }
   }
 
@@ -1089,6 +1180,25 @@
     let data = loadTracker();
 
     const GOAL_RING_C = 2 * Math.PI * 42;
+    const SALE_TOOLTIP_AUTO_CLOSE_MS = 2400;
+
+    function initSaleTooltips() {
+      document.querySelectorAll(".dash-sale-tip").forEach((tip) => {
+        if (tip.dataset.autoCloseBound === "1") return;
+        tip.dataset.autoCloseBound = "1";
+
+        let closeTimer = 0;
+
+        tip.addEventListener("toggle", () => {
+          window.clearTimeout(closeTimer);
+          if (!tip.open) return;
+
+          closeTimer = window.setTimeout(() => {
+            tip.open = false;
+          }, SALE_TOOLTIP_AUTO_CLOSE_MS);
+        });
+      });
+    }
 
     function applyGoalRingProgress(pct) {
       const ring = document.getElementById("goal-ring-progress");
@@ -1103,7 +1213,7 @@
       const earned = calcEarnedFromDeals(deals);
       const closes = deals.length;
       const goal = normalizeGoal(data.goal);
-      const pct = Math.min(100, (earned / goal) * 100);
+      const pct = (earned / goal) * 100;
 
       const earnedEl = document.getElementById("tracker-earned");
       if (earnedEl) earnedEl.textContent = "$" + formatMoney(earned);
@@ -1115,14 +1225,13 @@
       const pctRound = Math.round(pct);
       applyGoalRingProgress(pct);
       if (pctBadge) pctBadge.textContent = pctRound + "%";
-      if (gl) {
-        gl.textContent = "$" + formatMoney(earned) + " of $" + formatMoney(goal);
-      }
+      if (gl) gl.textContent = closes === 1 ? "1 sale" : closes + " sales";
       if (rem) {
-        rem.textContent =
-          earned >= goal
+        rem.textContent = earned > goal
+          ? "$" + formatMoney(earned - goal) + " over"
+          : earned === goal
             ? "Goal reached"
-            : "$" + formatMoney(goal - earned) + " to go";
+            : "$" + formatMoney(goal - earned) + " remaining";
       }
       const goalDisplay = document.getElementById("goal-display-value");
       if (goalDisplay && !document.getElementById("dash-goal-editor")?.classList.contains("is-editing")) {
@@ -1203,7 +1312,7 @@
       list.innerHTML = deals
         .map((d) => {
           const amount = Number(d.commission) || 0;
-          const title = d.businessName || "$" + formatMoney(amount);
+          const title = d.businessName || "Sale logged";
 
           return (
             '<li class="deal-card" data-deal-id="' +
@@ -1214,11 +1323,13 @@
             '<strong class="deal-title">' +
             escHtml(title) +
             "</strong>" +
-            (d.businessName
-              ? '<span class="deal-amount">$' + formatMoney(amount) + "</span>"
-              : "") +
             '<span class="deal-date">' +
             escHtml(formatDealDate(d.createdAt)) +
+            "</span>" +
+            "</div>" +
+            '<div class="deal-summary">' +
+            '<span class="deal-amount"><span class="deal-amount-label">Amount</span>$' +
+            formatMoney(amount) +
             "</span>" +
             "</div>" +
             "</div>" +
@@ -1307,6 +1418,7 @@
       saveTracker(data);
     }
     initGoalEditor();
+    initSaleTooltips();
     if (window.SiteIcons) window.SiteIcons.initIcons();
     renderAll();
   }
@@ -2029,8 +2141,32 @@
     if (!skipSave) persistTemplateBuilder();
   }
 
+  function readTplPriceFromDom() {
+    const map = {
+      "btn-p500": "$500",
+      "btn-p700": "$700",
+      "btn-p1000": "$1,000",
+      "btn-p1500": "$1,500",
+    };
+    for (const [id, price] of Object.entries(map)) {
+      if (document.getElementById(id)?.classList.contains("active")) return price;
+    }
+    return tplPrice || "$500";
+  }
+
+  function readTplModeFromDom() {
+    if (document.getElementById("btn-bk")?.classList.contains("active")) return "bk";
+    return tplMode || "dl";
+  }
+
+  function tplInputValue(id) {
+    return String(document.getElementById(id)?.value || "")
+      .replace(/\r?\n/g, " ")
+      .trim();
+  }
+
   function formatPhoneForCopy(raw) {
-    const formatted = global.LeadDisplay?.formatPhoneForLeadBuilder?.(raw);
+    const formatted = window.LeadDisplay?.formatPhoneForLeadBuilder?.(raw);
     if (formatted) return formatted;
     const t = String(raw || "").trim();
     return t || "[Phone Number]";
@@ -2064,14 +2200,12 @@
   }
 
   function buildTemplateCopyText() {
-    const pref = tplMode === "dl" ? "Direct Link" : "Booking";
-    const maps =
-      String(document.getElementById("tpl-maps")?.value || "").trim() ||
-      "[Google Maps link]";
-    const phone = formatPhoneForCopy(document.getElementById("tpl-phone")?.value);
-    const name =
-      String(document.getElementById("tpl-name")?.value || "").trim() || "[Name]";
-    const price = tplPrice || "$500";
+    const mode = readTplModeFromDom();
+    const pref = mode === "dl" ? "Direct Link" : "Booking";
+    const maps = tplInputValue("tpl-maps") || "[Google Maps link]";
+    const phone = formatPhoneForCopy(tplInputValue("tpl-phone"));
+    const name = tplInputValue("tpl-name") || "[Name]";
+    const price = readTplPriceFromDom();
     return (
       "Price: " +
       price +
@@ -2079,7 +2213,7 @@
       maps +
       "\nPreference: " +
       pref +
-      "\nPhone: " +
+      "\nPhone Number: " +
       phone +
       "\nOwner Name: " +
       name
@@ -2665,7 +2799,7 @@
   }
 
   function initOwnerPage() {
-    global.OwnerContact?.init?.();
+    window.OwnerContact?.init?.();
   }
 
   function ensureSignOutFloatScript() {
@@ -2714,7 +2848,7 @@
     initOnboardingChecklist();
     renderOnboardingPath();
     initSalesTracker();
-    global.DashboardPending?.init?.();
+    window.DashboardPending?.init?.();
     renderStepFooter();
     initAccordions();
     initCallScripts();
@@ -2769,14 +2903,15 @@
       return;
     }
     appLaunchStarted = true;
+
+    if (window.RepStorage?.init) {
+      window.RepStorage.init().catch((e) => console.warn("Rep settings init failed", e));
+    }
+
     try {
       bootApp();
     } catch (e) {
       console.error("Dashboard boot failed", e);
-    }
-
-    if (window.RepStorage?.init) {
-      window.RepStorage.init().catch((e) => console.warn("Rep settings init failed", e));
     }
   }
 
@@ -2800,7 +2935,7 @@
       if (document.getElementById("scripts-editor")) initCallScripts();
       if (document.getElementById("outreach-editor")) initOutreachEditor();
     }
-    global.DashboardPending?.refresh?.();
+    window.DashboardPending?.refresh?.();
     if (window.RepStorage?.whenReady) {
       window.RepStorage.whenReady(applyPostLoginRedirect);
     } else {

@@ -10,6 +10,8 @@
   const PAYOUT_ICON_FILES = {
     cashapp: "Cashapp.png",
     venmo: "Venmo.png",
+    paypal: "PayPal.png",
+    zelle: "Zelle.png",
   };
 
   const METHODS = [

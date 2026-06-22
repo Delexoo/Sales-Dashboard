@@ -408,18 +408,25 @@
     const loading = document.getElementById("faq-qa-loading");
     if (!list) return;
 
+    currentRepId = global.RepSession?.getId?.() || global.RepSession?.get?.()?.id || null;
+    let loadingTimer = null;
+
     try {
-      if (loading) loading.hidden = false;
-      const identity = await resolveIdentity();
-      currentRepId = identity?.id || null;
-      await global.RepProfilePhoto?.refreshTeamPhotos?.();
-      const { questions, answersByQ } = await fetchThreads();
+      loadingTimer = setTimeout(() => {
+        if (loading) loading.hidden = false;
+      }, 180);
+
+      const [{ questions, answersByQ }] = await Promise.all([
+        fetchThreads(),
+        global.RepProfilePhoto?.refreshTeamPhotos?.().catch(() => {}),
+      ]);
       renderThread(questions, answersByQ);
     } catch (e) {
       console.warn("FAQ Q&A load failed", e);
       list.innerHTML =
         '<p class="faq-qa-error muted">Could not load questions. Run <code>supabase-faq-qa-setup.sql</code> in Supabase, then refresh.</p>';
     } finally {
+      if (loadingTimer) clearTimeout(loadingTimer);
       if (loading) loading.hidden = true;
     }
   }

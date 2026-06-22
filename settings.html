@@ -10,8 +10,8 @@
 <body data-page="settings">
   <div id="shell"></div>
   <div id="page-body">
-    <h1>Settings</h1>
-    <p class="lead">Customize your appearance and account.</p>
+    <h1>Customize your workspace</h1>
+    <p class="lead">Change your theme, nickname, profile photo, and account preferences.</p>
 
     <div class="settings-stack">
       <section class="card settings-card" id="settings-profile">
@@ -92,9 +92,15 @@
       <section class="card settings-card" id="settings-appearance">
         <h2 class="settings-card-title" data-icon="sparkles">Appearance</h2>
         <p class="field-label">Theme</p>
-        <div class="settings-segment" role="group" aria-label="Theme">
-          <button type="button" class="settings-segment-btn" data-theme-pick="light">Light</button>
-          <button type="button" class="settings-segment-btn" data-theme-pick="dark">Dark</button>
+        <div class="settings-color-grid" role="group" aria-label="Theme color">
+          <button type="button" class="settings-color-btn settings-color-btn--current" data-ui-color-pick="current"><span class="settings-color-swatch" aria-hidden="true"></span>Current</button>
+          <button type="button" class="settings-color-btn settings-color-btn--white" data-ui-color-pick="white"><span class="settings-color-swatch" aria-hidden="true"></span>White</button>
+          <button type="button" class="settings-color-btn settings-color-btn--black" data-ui-color-pick="black"><span class="settings-color-swatch" aria-hidden="true"></span>Black</button>
+          <button type="button" class="settings-color-btn settings-color-btn--green" data-ui-color-pick="green"><span class="settings-color-swatch" aria-hidden="true"></span>Green</button>
+          <button type="button" class="settings-color-btn settings-color-btn--grey" data-ui-color-pick="grey"><span class="settings-color-swatch" aria-hidden="true"></span>Grey</button>
+          <button type="button" class="settings-color-btn settings-color-btn--blue" data-ui-color-pick="blue"><span class="settings-color-swatch" aria-hidden="true"></span>Blue</button>
+          <button type="button" class="settings-color-btn settings-color-btn--purple" data-ui-color-pick="purple"><span class="settings-color-swatch" aria-hidden="true"></span>Purple</button>
+          <button type="button" class="settings-color-btn settings-color-btn--red" data-ui-color-pick="red"><span class="settings-color-swatch" aria-hidden="true"></span>Red</button>
         </div>
         <div class="settings-toggle-row">
           <div class="settings-toggle-copy">

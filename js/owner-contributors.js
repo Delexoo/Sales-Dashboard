@@ -698,20 +698,29 @@
     return Promise.resolve();
   }
 
+  function bootContributors() {
+    pingPresence().catch(() => {});
+    refreshContributorData()
+      .then(() => {
+        contributorStatsReady = true;
+        renderContributors();
+      })
+      .catch(() => renderContributors());
+    if (global.RepProfilePhoto?.refreshTeamPhotos) {
+      global.RepProfilePhoto.refreshTeamPhotos()
+        .then(() => renderContributors())
+        .catch(() => {});
+    }
+  }
+
   function init() {
     if (document.body.dataset.page !== "contributors") return;
     renderContributors();
-    const boot = () => {
-      pingPresence()
-        .then(() => refreshPhotosAndRender())
-        .catch(() => refreshPhotosAndRender().catch(() => {}));
-    };
+    const boot = () => bootContributors();
     if (global.SiteLock?.whenUnlocked) global.SiteLock.whenUnlocked(boot);
     else boot();
     window.addEventListener("rep-settings-ready", () => {
-      pingPresence()
-        .then(() => refreshPhotosAndRender())
-        .catch(renderContributors);
+      bootContributors();
     });
     window.addEventListener("rep-settings-synced", () => {
       refreshContributorData()

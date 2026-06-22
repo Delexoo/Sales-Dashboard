@@ -110,64 +110,69 @@
     );
   }
 
+  function localIdentity(id) {
+    let name = String(global.RepSession?.get?.()?.name || "").trim();
+    if (!name) name = nameFromTracker(id);
+    const displayName = name || id;
+    return {
+      id,
+      name: displayName,
+      photoUrl: photoUrl(id, displayName),
+    };
+  }
+
+  async function enrichIdentity(id) {
+    try {
+      if (global.RepStorage?.init) {
+        await global.RepStorage.init();
+      }
+      let name = String(global.RepSession?.get?.()?.name || "").trim();
+      if (!name) name = nameFromTracker(id);
+      if (!name) {
+        const cloudName = await fetchCloudRepName(id);
+        if (cloudName) {
+          name = cloudName;
+          global.RepSession?.set?.({ id, name });
+        }
+      }
+      if (global.RepProfilePhoto?.refreshTeamPhotos) {
+        await global.RepProfilePhoto.refreshTeamPhotos();
+      }
+      const identity = localIdentity(id);
+      applyNameLabels(identity.name, identity.id);
+      applyFaqAvatar(identity);
+      return identity;
+    } catch (e) {
+      console.warn("Rep identity enrich failed", e);
+      return localIdentity(id);
+    }
+  }
+
   async function resolveRepIdentity() {
     const id = repId();
     if (!id) return null;
 
-    if (global.RepStorage?.init) {
-      try {
-        await global.RepStorage.init();
-      } catch (e) {
-        console.warn("Rep identity: settings init failed", e);
-      }
-    }
-
-    let name = String(global.RepSession?.get?.()?.name || "").trim();
-    if (!name) name = nameFromTracker(id);
-    if (!name) name = await fetchCloudRepName(id);
-
-    if (name) global.RepSession?.set?.({ id, name });
-
-    if (global.RepProfilePhoto?.refreshTeamPhotos) {
-      try {
-        await global.RepProfilePhoto.refreshTeamPhotos();
-      } catch (e) {
-        console.warn("Rep identity: photo refresh failed", e);
-      }
-    }
-
-    const session = global.RepSession?.get?.();
-    const displayName = String(session?.name || name || "").trim() || id;
-    const RPP = global.RepProfilePhoto;
-    const avatar =
-      (RPP?.displayUrl && session?.id === id ? RPP.displayUrl() : "") ||
-      photoUrl(id, displayName);
-
-    return {
-      id,
-      name: displayName,
-      photoUrl: avatar || defaultPhotoUrl(),
-    };
+    const identity = localIdentity(id);
+    void enrichIdentity(id);
+    return identity;
   }
 
-  async function refreshUI() {
-    if (!resolving) {
-      resolving = resolveRepIdentity()
-        .then((identity) => {
-          if (identity) {
-            applyNameLabels(identity.name, identity.id);
-            applyFaqAvatar(identity);
-          } else {
-            applyNameLabels("", null);
-            applyFaqAvatar(null);
-          }
-          return identity;
-        })
-        .finally(() => {
-          resolving = null;
-        });
+  function refreshUI() {
+    const id = repId();
+    if (!id) {
+      applyNameLabels("", null);
+      applyFaqAvatar(null);
+      return Promise.resolve(null);
     }
-    return resolving;
+    const identity = localIdentity(id);
+    applyNameLabels(identity.name, identity.id);
+    applyFaqAvatar(identity);
+    if (!resolving) {
+      resolving = enrichIdentity(id).finally(() => {
+        resolving = null;
+      });
+    }
+    return Promise.resolve(identity);
   }
 
   function whenIdentityReady(fn) {

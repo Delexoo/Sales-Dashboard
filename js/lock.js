@@ -485,6 +485,27 @@
     applyUnlockedUi();
     window.RepSession.applyToTracker(true);
     startSessionWatch();
+    resumeAuthenticatedSession();
+  }
+
+  async function resumeAuthenticatedSession() {
+    if (!isAuthenticated()) return;
+    if (window.RepStorage?.init) {
+      try {
+        await window.RepStorage.init();
+      } catch (e) {
+        console.warn("Rep settings init on resume failed", e);
+      }
+    }
+    window.RepSession?.startOnlineHeartbeat?.();
+    window.RepSession?.touchOnline?.();
+    if (window.RepStorage?.flushSync) {
+      try {
+        await window.RepStorage.flushSync();
+      } catch (e) {
+        console.warn("Rep settings sync on resume failed", e);
+      }
+    }
   }
 
   function whenUnlocked(fn) {

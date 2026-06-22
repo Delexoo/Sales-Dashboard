@@ -10,8 +10,8 @@
 <body data-page="scripts">
   <div id="shell"></div>
   <div id="page-body">
-    <h1>Call scripts</h1>
-    <p class="lead">Pick a script before you dial — your edits save to your account. Feel free to write your own if you think of something better. Use <a class="link-bold-blue" href="template.html">Lead Builder</a> when they are interested.</p>
+    <h1>Know what to say</h1>
+    <p class="lead">Pick a call script before you dial — follow the response buttons and send interested leads to the <a class="link-bold-blue" href="template.html">Lead Builder</a>.</p>
 
     <div id="scripts-editor">
       <p class="note scripts-flow-note">Follow the colored buttons at each step — they jump you to the right lines based on what they say on the call.</p>
@@ -65,7 +65,7 @@
 
           <div class="script-block script-block-pathway-target" id="script-a-no" data-script-target="script-a-no">
             <span class="script-label">If NO — one reframe, then exit</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-no">"Totally fair — most professional web agencies charge $3,000 to $10,000+ upfront, and you're still waiting weeks to see anything. I already built your demo for free — you only pay if you love it. If you want to look — would you rather a direct link or a quick call?"</div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="a-no">"Most professional web agencies charge $3,000 to $10,000+, and we only charge $500. again I already built your demo for free — you only pay if you love it. If you want to look — would you rather a direct link or a quick call?"</div>
             <div class="script-pathways">
               <span class="script-pathways-label">They say</span>
               <button type="button" class="script-path-btn script-path-btn--yes script-open-btn" data-script-id="g">Yes</button>
@@ -105,13 +105,8 @@
             <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="b-opener">"Hi — this might be your <strong>least favorite call of the day</strong>. It's a cold call — I'll keep it to <strong>20 seconds</strong>, or you could hang up right now." <em>(wait for yes)</em></div>
           </div>
 
-          <div class="script-block script-block-pathway-target" id="script-b-hook" data-script-target="script-b-hook">
-            <span class="script-label">Step 3 — Hook</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="b-hook">"Here's why I called — I noticed your business <strong>doesn't have a website yet</strong>, and I actually built you a <strong>free demo</strong> so you can see what you're missing before you spend anything."</div>
-          </div>
-
           <div class="script-block script-block-pathway-target" id="script-b-offer" data-script-target="script-b-offer">
-            <span class="script-label">Step 4 — Offer</span>
+            <span class="script-label">Step 3 — Offer</span>
             <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="b-offer">"So I already built you a <strong>free website</strong>. Free to look at. If you like it, I'm only asking for <strong>$500</strong>. If you don't like it, you never have to hear from me again. How does that sound?"</div>
             <div class="script-pathways">
               <span class="script-pathways-label">They say</span>
@@ -290,27 +285,41 @@
 
           <div class="script-block script-block-pathway-target" id="script-g-close">
             <span class="script-label">Step 1 — Confirm interest</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-close">"Perfect — I'll get this to the team so we can send your preview. Three quick questions so we build it right:"</div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-close">"Perfect — I'll ask you three quick questions to make everything goes well:"</div>
           </div>
 
           <div class="script-block script-block-pathway-target" id="script-g-q1" data-script-target="script-g-q1">
             <span class="script-label">Question 1 — Delivery</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q1">"Would you rather get a <strong>direct link</strong> to the site, or a <strong>booking page</strong> where customers schedule with you?" <em>(write their answer)</em></div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q1">"Do you want to receive a <strong>direct link</strong> to the website, or do you want to <strong>book a meeting</strong> to show you everything about the website?" <em>(write their answer)</em></div>
           </div>
 
           <div class="script-block script-block-pathway-target" id="script-g-q2" data-script-target="script-g-q2">
             <span class="script-label">Question 2 — Phone</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q2">"What's the best number for texts about the site — is this one on caller ID okay?" <em>(confirm phone)</em></div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q2">"Is this phone number okay to use?" <em>(confirm phone)</em></div>
+            <div class="script-pathways">
+              <span class="script-pathways-label">They say</span>
+              <button type="button" class="script-path-btn script-path-btn--yes" data-scroll-target="script-g-q3">Yes</button>
+              <button type="button" class="script-path-btn script-path-btn--no" data-scroll-target="script-g-q2-alt">Different number</button>
+            </div>
+          </div>
+
+          <div class="script-block script-block-pathway-target" id="script-g-q2-alt" data-script-target="script-g-q2-alt">
+            <span class="script-label">If different number</span>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q2-alt">"What's the best number to text you at?" <em>(write their answer)</em></div>
+            <div class="script-pathways">
+              <span class="script-pathways-label">Next</span>
+              <button type="button" class="script-path-btn script-path-btn--yes" data-scroll-target="script-g-q3">Continue</button>
+            </div>
           </div>
 
           <div class="script-block script-block-pathway-target" id="script-g-q3" data-script-target="script-g-q3">
             <span class="script-label">Question 3 — Owner name</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q3">"And who should I put as the owner on the site — first and last name?" <em>(get spelling)</em></div>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-q3">"May I have your first name please" <em>(get spelling)</em></div>
           </div>
 
           <div class="script-block script-block-pathway-target" id="script-g-price" data-script-target="script-g-price">
-            <span class="script-label">Confirm price (must match Lead Builder)</span>
-            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-price">"Just to confirm — if you love the demo, the package we discussed is <strong>$500</strong> upfront plus <strong>$5/month</strong> hosting. Sound good?" <em>(adjust if you quoted $700, $1K, or $1.5K on the call)</em></div>
+            <span class="script-label">Thank you — dismiss the call</span>
+            <div class="script-body" contenteditable="true" spellcheck="true" data-block-id="g-price">"Thank you very much — I will contact you in a couple minutes if you ever need any questions feel free to contact us anytime" <em>(hang up)</em></div>
           </div>
 
           <div class="script-block script-block-pathway-target" id="script-g-next" data-script-target="script-g-next">

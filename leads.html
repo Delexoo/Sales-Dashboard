@@ -18,8 +18,6 @@
         <div class="leads-toolbar-metrics" aria-live="polite">
           <span class="leads-metric"><strong id="lf-stat-total">—</strong> Leads</span>
           <span class="leads-metric-sep" aria-hidden="true">·</span>
-          <span class="leads-metric"><strong id="lf-stat-showing">—</strong> showing</span>
-          <span class="leads-metric-sep" aria-hidden="true">·</span>
           <span class="leads-metric leads-metric-called"><strong id="lf-stat-done">—</strong> You called</span>
         </div>
         <button type="button" class="lf-refresh-btn" id="lf-refresh" aria-label="Refresh leads from database">
@@ -66,8 +64,11 @@
 
       <div class="leads-toolbar-categories" id="lf-toolbar-extra" hidden>
         <div class="lf-filter-group lf-filter-categories">
-          <span class="lf-filter-label" title="Click a category to move those leads to the top of the list">Priority categories</span>
-          <div class="leads-chips" id="lf-category-chips" role="group" aria-label="Priority categories"></div>
+          <div class="lf-category-label-row">
+            <span class="lf-filter-label" title="Click a category to move those leads to the top of the list">Categories</span>
+            <span class="lf-category-available" id="lf-category-available" aria-live="polite"></span>
+          </div>
+          <div class="leads-chips" id="lf-category-chips" role="group" aria-label="Categories"></div>
         </div>
       </div>
     </section>

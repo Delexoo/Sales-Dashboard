@@ -15,6 +15,8 @@
     { value: "pending", label: "Pending" },
     { value: "removed", label: "Removed" },
   ];
+  const INITIAL_RENDER_LIMIT = 24;
+  const RENDER_INCREMENT = 24;
   const PREFS_KEY = "lpc_lead_finder_prefs_v1";
   const SAVED_KEY = "lpc_lead_saved_v1";
   const PINNED_KEY = "lpc_lead_pinned_v1";
@@ -30,6 +32,15 @@
   };
   const WEBSITE_FILTERS = ["web", "noweb", "all"];
   const REVIEWS_FILTERS = ["all", "1", "2", "3", "4", "5"];
+  const BASIC_CATEGORY_GROUPS = [
+    { label: "Kids", pattern: /child|daycare|day care|preschool|school|tutor|academy/i },
+    { label: "Health", pattern: /dental|dentist|doctor|clinic|medical|chiropr|therapy|wellness|care/i },
+    { label: "Home", pattern: /home|roof|plumb|electric|hvac|landscap|lawn|clean|paint|floor|repair|contract/i },
+    { label: "Auto", pattern: /auto|car|truck|tire|mechanic|detail|body shop|collision/i },
+    { label: "Food", pattern: /restaurant|cafe|coffee|bakery|food|pizza|bar|grill|deli/i },
+    { label: "Pets", pattern: /pet|dog|cat|vet|veterinary|groom/i },
+    { label: "Beauty", pattern: /salon|spa|barber|nail|beauty|hair|massage/i },
+  ];
   /** @type {Set<string>} */
   let priorityCategories = new Set();
   let reviewsFilter = "all";
@@ -39,6 +50,11 @@
   let menuDocBound = false;
   /** Ignore workflow <select> change while syncing UI to listView (avoids jumping views). */
   let viewSelectSyncing = false;
+  let renderLimit = INITIAL_RENDER_LIMIT;
+  let lastViewFilterSig = "";
+  let loadMoreObserver = null;
+  let loadMoreScrollFallbackBound = false;
+  let autoLoadQueued = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -131,6 +147,12 @@
     return String(lead.categoryGroup || lead.category || "Other").trim() || "Other";
   }
 
+  function getBasicCategory(lead) {
+    const rawCategory = getLeadCategory(lead);
+    const group = BASIC_CATEGORY_GROUPS.find((item) => item.pattern.test(rawCategory));
+    return group ? group.label : "Other";
+  }
+
   function getReviewCount(lead) {
     const n = Number(lead?.reviewCount);
     return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0;
@@ -170,22 +192,45 @@
     applyFilters();
   }
 
+  function scrollToLeadGrid() {
+    const grid = $("lf-grid");
+    if (!grid) return;
+    requestAnimationFrame(() => {
+      grid.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   function collectCategoryCounts(leads) {
     const counts = new Map();
     leads.forEach((lead) => {
-      const cat = getLeadCategory(lead);
+      const cat = getBasicCategory(lead);
       counts.set(cat, (counts.get(cat) || 0) + 1);
     });
-    return [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return [...counts.entries()].sort((a, b) => {
+      const orderA = BASIC_CATEGORY_GROUPS.findIndex((item) => item.label === a[0]);
+      const orderB = BASIC_CATEGORY_GROUPS.findIndex((item) => item.label === b[0]);
+      const rankA = orderA === -1 ? BASIC_CATEGORY_GROUPS.length : orderA;
+      const rankB = orderB === -1 ? BASIC_CATEGORY_GROUPS.length : orderB;
+      return rankA - rankB || a[0].localeCompare(b[0]);
+    });
   }
 
   function renderCategoryFilters(browsableLeads) {
     const extra = $("lf-toolbar-extra");
     const wrap = $("lf-category-chips");
+    const available = $("lf-category-available");
     if (!extra || !wrap) return;
 
     const pairs = collectCategoryCounts(browsableLeads);
+    const totalAvailable = pairs.reduce((sum, [, count]) => sum + count, 0);
+    const enabledAvailable = pairs.reduce((sum, [cat, count]) => {
+      return priorityCategories.has(cat) ? sum + count : sum;
+    }, 0);
+    const availableCount = priorityCategories.size ? enabledAvailable : totalAvailable;
     extra.hidden = !leadsPageReady || pairs.length === 0;
+    if (available) {
+      available.textContent = pairs.length ? "(" + availableCount + " available)" : "";
+    }
 
     if (!pairs.length) {
       wrap.innerHTML = "";
@@ -193,7 +238,7 @@
     }
 
     wrap.innerHTML = pairs
-      .map(([cat, count]) => {
+      .map(([cat]) => {
         const active = priorityCategories.has(cat);
         return (
           '<button type="button" class="leads-chip' +
@@ -205,14 +250,12 @@
           '" title="' +
           escapeHtml(
             active
-              ? "Remove " + cat + " from priority"
-              : "Move " + cat + " leads to the top"
+              ? "Show all lead categories"
+              : "Show " + cat + " leads"
           ) +
           '">' +
           escapeHtml(cat) +
-          ' <span class="leads-chip-count">' +
-          count +
-          "</span></button>"
+          "</button>"
         );
       })
       .join("");
@@ -226,6 +269,57 @@
       "|" +
       Array.from(priorityCategories).sort().join(",")
     );
+  }
+
+  function resetRenderLimit() {
+    renderLimit = INITIAL_RENDER_LIMIT;
+  }
+
+  function renderedVisibleCount() {
+    return Math.min(visible.length, renderLimit);
+  }
+
+  function visibleRenderSlice() {
+    return visible.slice(0, renderedVisibleCount());
+  }
+
+  function hasMoreVisibleLeads() {
+    return renderedVisibleCount() < visible.length;
+  }
+
+  function loadNextVisibleBatch() {
+    if (!hasMoreVisibleLeads()) return false;
+    renderLimit = Math.min(visible.length, renderLimit + RENDER_INCREMENT);
+    renderGrid();
+    return true;
+  }
+
+  function queueLoadNextVisibleBatch() {
+    if (autoLoadQueued) return;
+    autoLoadQueued = true;
+    const schedule = global.requestAnimationFrame
+      ? global.requestAnimationFrame.bind(global)
+      : global.setTimeout.bind(global);
+    schedule(() => {
+      autoLoadQueued = false;
+      loadNextVisibleBatch();
+    });
+  }
+
+  function handleLoadMoreScrollFallback() {
+    const sentinel = document.querySelector("[data-lf-load-more-sentinel]");
+    if (!sentinel) return;
+    const viewportHeight = global.innerHeight || document.documentElement.clientHeight || 0;
+    if (sentinel.getBoundingClientRect().top <= viewportHeight + 420) {
+      queueLoadNextVisibleBatch();
+    }
+  }
+
+  function bindLoadMoreScrollFallback() {
+    if (loadMoreScrollFallbackBound) return;
+    loadMoreScrollFallbackBound = true;
+    global.addEventListener("scroll", handleLoadMoreScrollFallback, { passive: true });
+    global.addEventListener("resize", handleLoadMoreScrollFallback, { passive: true });
   }
 
   function normalizeLeadId(id) {
@@ -955,13 +1049,7 @@
     let ordered = sortLeadsPinnedFirst(leads);
     if (!priorityCategories.size) return ordered;
 
-    const priority = [];
-    const rest = [];
-    ordered.forEach((lead) => {
-      if (priorityCategories.has(getLeadCategory(lead))) priority.push(lead);
-      else rest.push(lead);
-    });
-    return priority.concat(rest);
+    return ordered.filter((lead) => priorityCategories.has(getBasicCategory(lead)));
   }
 
   function matchesWebsiteFilter(lead, websiteFilter) {
@@ -993,6 +1081,12 @@
   }
 
   function applyFilters() {
+    const viewFilterSig = listView + "|" + filtersSig();
+    if (viewFilterSig !== lastViewFilterSig) {
+      resetRenderLimit();
+      lastViewFilterSig = viewFilterSig;
+    }
+
     const f = getFilters();
     const browsable = getBrowsableLeads(f.websiteFilter);
 
@@ -1031,14 +1125,9 @@
     syncWorkflowSelectFromListView();
   }
 
-  function updateCount() {
-    const showingEl = $("lf-stat-showing");
-    if (showingEl) showingEl.textContent = String(visible.length);
-  }
-
   function setMetricsLoading(loading) {
     const val = loading ? "…" : null;
-    ["lf-stat-total", "lf-stat-showing", "lf-stat-done"].forEach((id) => {
+    ["lf-stat-total", "lf-stat-done"].forEach((id) => {
       const el = $(id);
       if (el && val) el.textContent = val;
     });
@@ -1050,7 +1139,6 @@
       $("lf-stat-total").textContent = String(countWorkflowView("default"));
     }
     if ($("lf-stat-done")) $("lf-stat-done").textContent = String(countCompleted());
-    updateCount();
   }
 
   function valueClass(text) {
@@ -1154,7 +1242,6 @@
       '" data-id="' +
       escapeHtml(lead.id) +
       '">' +
-      '<div class="lf-card-accent" aria-hidden="true"></div>' +
       '<div class="lf-team-anon-body">' +
       '<div class="lf-team-anon-rep-col">' +
       '<div class="lf-rep-avatar" aria-hidden="true">' +
@@ -1250,7 +1337,6 @@
 
     return `
       <article class="lead-card card${cardMod}" data-id="${escapeHtml(leadId)}">
-        <div class="lf-card-accent" aria-hidden="true"></div>
         <header class="lf-card-top">
           <div class="lf-card-identity">
             <div class="lf-avatar" style="${avatarStyle}" aria-hidden="true">${escapeHtml(avatarText)}</div>
@@ -1367,8 +1453,8 @@
     );
   }
 
-  function renderCompleteSplit() {
-    const { mine, team } = splitCompleteLeads(visible);
+  function renderCompleteSplit(leads) {
+    const { mine, team } = splitCompleteLeads(leads);
     return (
       '<div class="lf-complete-split">' +
       renderCompletePane(
@@ -1385,6 +1471,43 @@
       ) +
       "</div>"
     );
+  }
+
+  function renderLoadMoreSentinel() {
+    const rendered = renderedVisibleCount();
+    const remaining = visible.length - rendered;
+    if (remaining <= 0) return "";
+    const next = Math.min(RENDER_INCREMENT, remaining);
+    return (
+      '<div class="leads-load-more" data-lf-load-more-sentinel aria-live="polite">' +
+      '<span class="lf-load-more-status">Loading ' +
+      next +
+      " more as you scroll...</span>" +
+      "</div>"
+    );
+  }
+
+  function syncLoadMoreObserver(grid) {
+    if (loadMoreObserver) {
+      loadMoreObserver.disconnect();
+      loadMoreObserver = null;
+    }
+    const sentinel = grid.querySelector("[data-lf-load-more-sentinel]");
+    if (!sentinel) return;
+    if ("IntersectionObserver" in global) {
+      loadMoreObserver = new global.IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            queueLoadNextVisibleBatch();
+          }
+        },
+        { rootMargin: "420px 0px" }
+      );
+      loadMoreObserver.observe(sentinel);
+      return;
+    }
+    bindLoadMoreScrollFallback();
+    handleLoadMoreScrollFallback();
   }
 
   function renderGrid() {
@@ -1407,29 +1530,34 @@
         sig += "|" + (global.RepProfilePhoto?.teamPhotosSig?.() || "");
       }
     }
+    sig += "|render:" + renderLimit;
 
     if (visible.length > 0 && grid.dataset.renderSig === sig) {
       return;
     }
     grid.dataset.renderSig = sig;
 
+    const rendered = visibleRenderSlice();
+    const loadMore = renderLoadMoreSentinel();
+
     if (listView === "complete") {
       grid.classList.add("leads-grid--complete-split");
-      grid.innerHTML = renderCompleteSplit();
+      grid.innerHTML = renderCompleteSplit(rendered) + loadMore;
     } else if (listView === "not-interested") {
       grid.classList.remove("leads-grid--complete-split");
-      grid.innerHTML = visible
+      grid.innerHTML = rendered
         .map((l) => renderAnonymousTeamCard(l, "Not interested"))
-        .join("");
+        .join("") + loadMore;
     } else if (visible.length === 0) {
       grid.innerHTML = "";
       grid.classList.remove("leads-grid--complete-split");
     } else {
       grid.classList.remove("leads-grid--complete-split");
-      grid.innerHTML = visible.map((l) => renderCard(l)).join("");
+      grid.innerHTML = rendered.map((l) => renderCard(l)).join("") + loadMore;
     }
 
     if (window.SiteIcons) window.SiteIcons.initIcons(grid);
+    syncLoadMoreObserver(grid);
   }
 
   function closeAllMenus() {
@@ -1802,7 +1930,11 @@
     setMetricsLoading(true);
     const grid = $("lf-grid");
     if (grid) {
-      grid.innerHTML = '<p class="leads-loading muted">Loading leads…</p>';
+      grid.innerHTML =
+        '<div class="leads-loading" role="status" aria-live="polite">' +
+        '<span class="leads-loading-orb" aria-hidden="true"></span>' +
+        '<span class="sr-only">Loading leads</span>' +
+        "</div>";
     }
     const loader = window.LeadsLoader;
     if (!loader?.load) throw new Error("LeadsLoader missing");
@@ -1831,6 +1963,7 @@
     leadsPageReady = true;
     clearTimeout(syncFilterTimer);
     syncFilterTimer = null;
+    lastViewFilterSig = "";
     applyFilters();
     refreshTeamProfilePhotos().catch(() => {});
   }
@@ -1876,6 +2009,7 @@
       const chip = e.target.closest(".leads-chip[data-category]");
       if (!chip) return;
       togglePriorityCategory(chip.dataset.category);
+      scrollToLeadGrid();
     });
 
     $("lf-workflow-view")?.addEventListener("change", (e) => {
@@ -1916,7 +2050,7 @@
     loadLeads().catch((err) => {
       leadsPageReady = false;
       setMetricsLoading(false);
-      ["lf-stat-total", "lf-stat-showing", "lf-stat-done"].forEach((id) => {
+      ["lf-stat-total", "lf-stat-done"].forEach((id) => {
         const el = $(id);
         if (el) el.textContent = "—";
       });

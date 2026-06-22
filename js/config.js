@@ -49,7 +49,7 @@ window.SITE_CONFIG = {
   useFeedback: true,
   useFaqQa: true,
   onboardingVideoUrl: "https://youtu.be/BPbOQqbex98?si=wBPx0bqtRxfaQJrf",
-  courseModuleVideos: {"introduction":"https://youtu.be/mXOzM9eNC_A","setup-accounts":"https://youtu.be/tgdvS4wTPrA"},
+  courseModuleVideos: {"introduction":"https://youtu.be/mXOzM9eNC_A","setup-accounts":"https://youtu.be/tgdvS4wTPrA","preferences":""},
   onboardingVideoLabel: "Legacy fallback video (until per-module clips are set)",
   email: "fullprofessionalwebsites@outlook.com",
   phone: "(401) 300-0957",

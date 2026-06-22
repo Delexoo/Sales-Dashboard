@@ -23,12 +23,20 @@
   }
 
   function readTheme() {
+    const prefs = readPrefsRaw();
+    const c = prefs?.uiColor;
+    if (["current", "white", "green", "grey", "blue", "purple", "red"].includes(c)) return "light";
+    if (c === "black") return "dark";
     const device = localStorage.getItem(DEVICE_KEY);
     if (device === "light" || device === "dark" || device === "system") return device;
-    const prefs = readPrefsRaw();
     const t = prefs?.theme;
     if (t === "light" || t === "dark" || t === "system") return t;
     return "light";
+  }
+
+  function readUiColor() {
+    const c = readPrefsRaw()?.uiColor;
+    return ["current", "white", "black", "green", "grey", "blue", "purple", "red"].includes(c) ? c : "current";
   }
 
   function readReduceMotion() {
@@ -45,6 +53,10 @@
       const prefersDark = global.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
       html.setAttribute("data-theme", prefersDark ? "dark" : "light");
     }
+
+    const uiColor = readUiColor();
+    if (uiColor === "current") html.removeAttribute("data-ui-color");
+    else html.setAttribute("data-ui-color", uiColor);
 
     const rm = reduceMotion !== undefined ? reduceMotion : readReduceMotion();
     if (rm) html.setAttribute("data-reduce-motion", "1");
