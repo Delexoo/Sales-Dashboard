@@ -61,7 +61,7 @@
   }
 
   function useServerPinAuth() {
-    return !!global.SiteSupabase?.canUse?.();
+    return !!(window.SiteSupabase?.canUse?.());
   }
 
   function getSupabaseClient() {
