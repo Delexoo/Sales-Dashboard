@@ -5,7 +5,7 @@
   const LOCAL_KEY = "lpc_rep_payout_v1";
   const LOCAL_LIST_KEY = "lpc_rep_payouts_list_v1";
   const PAYOUT_ICON_BASE =
-    "https://raw.githubusercontent.com/Delexoo/Sales-Dashboard/main/doc/";
+    "https://raw.githubusercontent.com/Delexoo/Dashboard/main/doc/";
 
   const PAYOUT_ICON_FILES = {
     cashapp: "Cashapp.png",

@@ -5,7 +5,7 @@
   const KEY = "lpc_rep_profile_photo_v1";
   const BUCKET = "rep-avatars";
   const DEFAULT_URL =
-    "https://raw.githubusercontent.com/Delexoo/Sales-Dashboard/main/doc/Default.jpg";
+    "https://raw.githubusercontent.com/Delexoo/Dashboard/main/doc/Default.jpg";
   const MAX_BYTES = 2 * 1024 * 1024;
   const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 

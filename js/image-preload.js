@@ -19,7 +19,10 @@
 
   function isImageUrl(value) {
     const s = String(value || "").trim();
-    return /^https?:\/\//i.test(s) && /\.(jpg|jpeg|png|webp|gif|svg)(\?|$)/i.test(s);
+    return (
+      /^https?:\/\//i.test(s) ||
+      (/^doc\/.+\.(jpg|jpeg|png|webp|gif|svg)$/i.test(s))
+    );
   }
 
   function normalizeUrl(url) {
@@ -38,7 +41,7 @@
   }
 
   function preloadOne(url, priority) {
-    const href = normalizeUrl(url);
+    const href = absoluteAssetUrl(url);
     if (!href || PRELOADED.has(href)) return;
     PRELOADED.add(href);
 
@@ -61,17 +64,28 @@
     const c = global.SITE_CONFIG || {};
     const urls = new Set();
     CONFIG_IMAGE_KEYS.forEach((key) => {
-      if (c[key]) urls.add(normalizeUrl(c[key]));
+      if (c[key]) urls.add(absoluteAssetUrl(c[key]));
     });
     Object.values(c).forEach((val) => {
-      if (isImageUrl(val)) urls.add(normalizeUrl(val));
+      if (isImageUrl(val)) urls.add(absoluteAssetUrl(val));
     });
     return [...urls].filter(Boolean);
   }
 
+  function absoluteAssetUrl(url) {
+    const href = normalizeUrl(url);
+    if (!href) return "";
+    if (/^https?:\/\//i.test(href)) return href;
+    try {
+      return new URL(href, global.location.href).href;
+    } catch (e) {
+      return href;
+    }
+  }
+
   function ensureFavicon() {
     const c = global.SITE_CONFIG || {};
-    const url = normalizeUrl(c.brandLogoUrl || c.telegramTeamAvatar);
+    const url = absoluteAssetUrl(c.brandLogoUrl || c.telegramTeamAvatar);
     if (!url) return;
     let link = document.querySelector('link[rel="icon"]');
     if (!link) {
@@ -80,18 +94,54 @@
       document.head.appendChild(link);
     }
     link.href = url;
+    let apple = document.querySelector('link[rel="apple-touch-icon"]');
+    if (!apple) {
+      apple = document.createElement("link");
+      apple.rel = "apple-touch-icon";
+      document.head.appendChild(apple);
+    }
+    apple.href = url;
+  }
+
+  function upsertMeta(attr, key, content) {
+    const value = String(content || "").trim();
+    if (!value) return;
+    let el = document.querySelector(`meta[${attr}="${key}"]`);
+    if (!el) {
+      el = document.createElement("meta");
+      el.setAttribute(attr, key);
+      document.head.appendChild(el);
+    }
+    el.setAttribute("content", value);
+  }
+
+  function ensureSocialEmbed() {
+    const c = global.SITE_CONFIG || {};
+    const title = String(c.companyName || "Dashboard").trim();
+    const image = absoluteAssetUrl(c.brandLogoUrl || c.telegramTeamAvatar);
+    const pageTitle = String(document.title || title).trim();
+    upsertMeta("property", "og:type", "website");
+    upsertMeta("property", "og:site_name", title);
+    upsertMeta("property", "og:title", pageTitle);
+    upsertMeta("name", "twitter:card", "summary");
+    upsertMeta("name", "twitter:title", pageTitle);
+    if (image) {
+      upsertMeta("property", "og:image", image);
+      upsertMeta("name", "twitter:image", image);
+    }
   }
 
   function init() {
     if (started) return;
-    if (document.documentElement?.dataset?.loginRedirect === "entry") return;
     started = true;
-    preconnectHosts();
     ensureFavicon();
+    ensureSocialEmbed();
+    if (document.documentElement?.dataset?.loginRedirect === "entry") return;
+    preconnectHosts();
     const urls = collectConfigUrls();
     urls.forEach((url, i) => preloadOne(url, i === 0 ? "high" : "auto"));
     preloadOne(
-      "https://raw.githubusercontent.com/Delexoo/Sales-Dashboard/main/doc/Default.jpg",
+      "https://raw.githubusercontent.com/Delexoo/Dashboard/main/doc/Default.jpg",
       "high"
     );
   }

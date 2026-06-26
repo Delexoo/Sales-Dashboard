@@ -106,7 +106,7 @@ git commit -m "Update site"
 git push origin main
 ```
 
-Repo: [https://github.com/Delexoo/Sales-Dashboard](https://github.com/Delexoo/Sales-Dashboard)
+Repo: [https://github.com/Delexoo/Dashboard](https://github.com/Delexoo/Dashboard)
 
 First-time push only:
 
@@ -114,7 +114,7 @@ First-time push only:
 cd "/d/Website Bot/SalesTeamWebsite/github"
 git init
 git branch -M main
-git remote add origin https://github.com/Delexoo/Sales-Dashboard.git
+git remote add origin https://github.com/Delexoo/Dashboard.git
 git add .
 git commit -m "Initial public site"
 git push -u origin main

@@ -431,7 +431,7 @@
   function telegramAppIconUrl() {
     return (
       String(cfg().telegramAppIcon || "").trim() ||
-      "https://github.com/Delexoo/Sales-Dashboard/blob/main/doc/Telegram.png?raw=true"
+      "https://github.com/Delexoo/Dashboard/blob/main/doc/Telegram.png?raw=true"
     );
   }
 
