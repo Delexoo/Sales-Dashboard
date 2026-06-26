@@ -1436,6 +1436,81 @@ html.site-lock-active .sign-out-float {
   opacity: 0.55;
 }
 
+/* Light sidebar contrast repair: keep labels and icon buttons readable on pale cards. */
+html[data-theme="light"] .sidebar-panel {
+  background: #ffffff;
+  border-right-color: #dbe3ee;
+}
+
+html[data-theme="light"] .brand-text strong,
+html[data-theme="light"] .nav-link-text {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .brand-sub,
+html[data-theme="light"] .sidebar-rep-meta,
+html[data-theme="light"] .nav-section,
+html[data-theme="light"] .nav-section-toggle,
+html[data-theme="light"] .sidebar-legal {
+  color: #475569;
+}
+
+html[data-theme="light"] .nav-section-toggle {
+  font-weight: 750;
+}
+
+html[data-theme="light"] .nav-section-label {
+  color: inherit;
+}
+
+html[data-theme="light"] .ico-nav,
+html[data-theme="light"] .ico-inline,
+html[data-theme="light"] .ico-label,
+html[data-theme="light"] .ico-arrow {
+  color: #475569;
+  opacity: 1;
+}
+
+html[data-theme="light"] .nav-link {
+  color: #334155;
+  font-weight: 650;
+}
+
+html[data-theme="light"] .nav-link:hover,
+html[data-theme="light"] .nav-section-toggle:hover {
+  background: #eaf0f7;
+  color: #0f172a;
+}
+
+html[data-theme="light"] .nav-link.active {
+  background: #e7edf5;
+  color: #0f172a !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme="light"] .nav-link.active .ico-nav {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .nav-link .step-badge {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-weight: 700;
+}
+
+html[data-theme="light"] .nav-link.active .step-badge:not(.done-badge) {
+  background: #ffffff;
+  border-color: #b6c4d6;
+  color: #0f172a;
+}
+
+html[data-theme="light"] .nav-link-count,
+html[data-theme="light"] .nav-link-pct {
+  color: #475569;
+  opacity: 1;
+}
+
 .main {
   flex: 1;
   margin-left: var(--sidebar);
