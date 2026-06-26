@@ -4,7 +4,7 @@
  * PINs are never stored here · only in Supabase rep_pins.
  */
 window.SITE_CONFIG = {
-  companyName: "Sales Team Dashboard",
+  companyName: "Dashboard",
   brandLogoUrl: "https://raw.githubusercontent.com/Delexoo/Sales-Dashboard/main/doc/Crown.png",
   ownerName: "Delexo",
   ownerHandle: "@delexo",

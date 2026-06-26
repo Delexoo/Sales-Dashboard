@@ -836,7 +836,7 @@
 
   function brandMarkHtml() {
     const url = brandLogoUrl();
-    const name = cfg().companyName || "Sales Team Dashboard";
+    const name = cfg().companyName || "Dashboard";
     if (url) {
       return (
         `<span class="brand-mark brand-mark--image">` +
@@ -1144,7 +1144,7 @@
     const progress = loadProgress();
     const stepIcons = (window.SiteIcons && window.SiteIcons.STEP_ICONS) || {};
 
-    const brandName = c.companyName || "Sales Team Dashboard";
+    const brandName = c.companyName || "Dashboard";
     const shell = document.getElementById("shell");
     if (!shell) return;
     ensurePageLayout();

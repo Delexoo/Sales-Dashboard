@@ -261,7 +261,7 @@
     root.style.colorScheme = "light";
     const c = window.SITE_CONFIG || {};
     const logoUrl = String(c.brandLogoUrl || c.telegramTeamAvatar || "").trim();
-    const logoName = String(c.companyName || "Sales Team Dashboard").trim();
+    const logoName = String(c.companyName || "Dashboard").trim();
     const logoBlock = logoUrl
       ? '<img class="site-lock-logo" src="' +
         logoUrl.replace(/"/g, "&quot;") +

@@ -1,4 +1,4 @@
-# Sales Team Dashboard (GitHub Pages)
+# Dashboard (GitHub Pages)
 
 This folder is the **public** copy of the site — safe to push to GitHub. It contains **no PINs, API keys, or database secrets**.
 
