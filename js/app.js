@@ -1,6 +1,8 @@
 (function () {
   const global = window;
-  const PWA_MANIFEST_URL = "/manifest.json";
+  const PWA_BASE_URL = new URL("../", document.currentScript?.src || window.location.href);
+  const PWA_MANIFEST_URL = new URL("manifest.json", PWA_BASE_URL).href;
+  const PWA_SW_URL = new URL("sw.js", PWA_BASE_URL).href;
   const PWA_THEME_COLOR = "#0f172a";
 
   function ensurePwaMetadata() {
@@ -33,7 +35,7 @@
 
   function registerPwaServiceWorker() {
     if (!canRegisterServiceWorker()) return;
-    navigator.serviceWorker.register("/sw.js").catch((error) => {
+    navigator.serviceWorker.register(PWA_SW_URL).catch((error) => {
       console.warn("Service worker registration failed", error);
     });
   }

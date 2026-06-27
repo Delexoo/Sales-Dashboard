@@ -3,7 +3,9 @@
  * without loading Supabase, image preloads, or the lock UI.
  */
 (function (global) {
-  const PWA_MANIFEST_URL = "/manifest.json";
+  const PWA_BASE_URL = new URL("../", global.document.currentScript?.src || global.location.href);
+  const PWA_MANIFEST_URL = new URL("manifest.json", PWA_BASE_URL).href;
+  const PWA_SW_URL = new URL("sw.js", PWA_BASE_URL).href;
   const PWA_THEME_COLOR = "#0f172a";
   const PROGRESS_KEY = "lpc_sales_onboarding_progress_v1";
 
@@ -37,7 +39,7 @@
 
   function registerPwaServiceWorker() {
     if (!canRegisterServiceWorker()) return;
-    global.navigator.serviceWorker.register("/sw.js").catch((error) => {
+    global.navigator.serviceWorker.register(PWA_SW_URL).catch((error) => {
       console.warn("Service worker registration failed", error);
     });
   }
