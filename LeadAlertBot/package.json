@@ -1,0 +1,16 @@
+{
+  "name": "lead-alert-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Render web service: receives Supabase new_clients webhook and DMs a Telegram lead alert to the owner.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
